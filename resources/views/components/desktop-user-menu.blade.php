@@ -4,22 +4,24 @@
         :initials="auth()->user()->initials()"
         icon:trailing="chevrons-up-down"
         data-test="sidebar-menu-button"
+        class="**:!text-white !text-white hover:!bg-white/10"
     />
 
-    <flux:menu>
+    <flux:menu class="!bg-[#1b2d4f] !border-white/10">
         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
             <flux:avatar
                 :name="auth()->user()->name"
                 :initials="auth()->user()->initials()"
             />
             <div class="grid flex-1 text-start text-sm leading-tight">
-                <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
-                <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                <flux:heading class="truncate !text-white">{{ auth()->user()->name }}</flux:heading>
+                <flux:text class="truncate !text-white/50">{{ auth()->user()->email }}</flux:text>
             </div>
         </div>
-        <flux:menu.separator />
+        <flux:menu.separator class="!border-white/10" />
         <flux:menu.radio.group>
-            <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
+            <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate
+                class="**:!text-white !text-white hover:!bg-white/10 hover:!text-[#ffc000]">
                 {{ __('Settings') }}
             </flux:menu.item>
             <form method="POST" action="{{ route('logout') }}" class="w-full">
@@ -28,7 +30,7 @@
                     as="button"
                     type="submit"
                     icon="arrow-right-start-on-rectangle"
-                    class="w-full cursor-pointer"
+                    class="w-full cursor-pointer **:!text-white !text-white hover:!bg-white/10 hover:!text-[#ffc000]"
                     data-test="logout-button"
                 >
                     {{ __('Log out') }}

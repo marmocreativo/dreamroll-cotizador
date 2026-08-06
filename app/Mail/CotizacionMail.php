@@ -15,12 +15,17 @@ class CotizacionMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Cotizacion $cotizacion) {}
+    public Cotizacion $cotizacion;
+
+    public function __construct(Cotizacion $cotizacion)
+    {
+        $this->cotizacion = $cotizacion->loadMissing('productos.producto');
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Cotización ' . $this->cotizacion->folio . ' — GeneticLab',
+            subject: 'Cotización ' . $this->cotizacion->folio,
         );
     }
 
@@ -28,6 +33,7 @@ class CotizacionMail extends Mailable
     {
         return new Content(
             view: 'emails.cotizacion',
+            with: ['cotizacion' => $this->cotizacion],
         );
     }
 

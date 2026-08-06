@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cotizacion extends Model
@@ -12,12 +11,20 @@ class Cotizacion extends Model
 
     protected $fillable = [
         'folio',
-        'medico_id',
-        'hospital_id',
+        'cliente_prefijo',
+        'cliente_nombre',
+        'cliente_apellidos',
+        'cliente_empresa',
+        'cliente_telefono',
+        'cliente_email',
+        'cliente_direccion',
         'estado',
         'subtotal',
         'descuento',
+        'iva',
         'total',
+        'tiempo_entrega',
+        'condiciones',
         'notas',
         'valida_hasta',
     ];
@@ -25,9 +32,12 @@ class Cotizacion extends Model
     protected $casts = [
         'subtotal'     => 'decimal:2',
         'descuento'    => 'decimal:2',
+        'iva'          => 'decimal:2',
         'total'        => 'decimal:2',
         'valida_hasta' => 'date',
     ];
+
+    const IVA_PORCENTAJE = 16;
 
     protected static function booted(): void
     {
@@ -47,29 +57,29 @@ class Cotizacion extends Model
         return "COT-{$año}-{$consecutivo}";
     }
 
-    public function medico(): BelongsTo
+    public function productos(): HasMany
     {
-        return $this->belongsTo(Medico::class);
+        return $this->hasMany(CotizacionProducto::class);
     }
 
-    public function hospital(): BelongsTo
+    public function getClienteNombreCompletoAttribute(): string
     {
-        return $this->belongsTo(Hospital::class);
-    }
-
-    public function estudios(): HasMany
-    {
-        return $this->hasMany(CotizacionEstudio::class);
+        return collect([$this->cliente_prefijo, $this->cliente_nombre, $this->cliente_apellidos])
+            ->filter()
+            ->implode(' ');
     }
 
     public function recalcular(): void
     {
-        $subtotal = $this->estudios->sum('subtotal');
-        $descuento = $subtotal * ($this->descuento / 100);
+        $subtotal   = $this->productos->sum('subtotal');
+        $descuento  = $subtotal * ($this->descuento / 100);
+        $baseConDescuento = $subtotal - $descuento;
+        $iva        = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
 
         $this->update([
             'subtotal' => $subtotal,
-            'total'    => $subtotal - $descuento,
+            'iva'      => $iva,
+            'total'    => $baseConDescuento + $iva,
         ]);
     }
 }

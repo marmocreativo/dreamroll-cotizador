@@ -11,14 +11,32 @@ return new class extends Migration
         Schema::create('cotizaciones', function (Blueprint $table) {
             $table->id();
             $table->string('folio')->unique()->nullable();
-            $table->foreignId('medico_id')->nullable()->constrained('medicos')->nullOnDelete();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitales')->nullOnDelete();
-            $table->enum('estado', ['borrador', 'enviada', 'aceptada', 'rechazada', 'expirada'])->default('borrador');
+
+            // Datos del cliente (paso 1) — campos sueltos, sin tabla propia
+            $table->string('cliente_prefijo', 20)->nullable();
+            $table->string('cliente_nombre');
+            $table->string('cliente_apellidos')->nullable();
+            $table->string('cliente_empresa')->nullable();
+            $table->string('cliente_telefono', 20)->nullable();
+            $table->string('cliente_email')->nullable();
+            $table->string('cliente_direccion')->nullable();
+
+            // Totales (paso 2)
             $table->decimal('subtotal', 10, 2)->default(0);
-            $table->decimal('descuento', 5, 2)->default(0);
+            $table->decimal('descuento', 5, 2)->default(0);   // porcentaje
+            $table->decimal('iva', 10, 2)->default(0);        // monto calculado 16%
             $table->decimal('total', 10, 2)->default(0);
-            $table->text('notas')->nullable();
+
+            // Entrega y condiciones (paso 3)
+            $table->string('tiempo_entrega')->nullable();
+            $table->text('condiciones')->nullable();
             $table->date('valida_hasta')->nullable();
+
+            $table->enum('estado', ['borrador', 'enviada', 'aceptada', 'rechazada', 'expirada'])
+                ->default('borrador');
+
+            $table->text('notas')->nullable();
+
             $table->timestamps();
         });
     }

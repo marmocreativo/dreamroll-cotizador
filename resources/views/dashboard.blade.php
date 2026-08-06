@@ -5,44 +5,47 @@
         <div class="flex flex-wrap items-end gap-3">
             <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3">
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Desde</label>
+                    <label class="text-xs font-medium text-gray-500">Desde</label>
                     <input
                         type="date"
                         name="desde"
                         value="{{ $desde->toDateString() }}"
-                        class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm"
                     >
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Hasta</label>
+                    <label class="text-xs font-medium text-gray-500">Hasta</label>
                     <input
                         type="date"
                         name="hasta"
                         value="{{ $hasta->toDateString() }}"
-                        class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm"
                     >
                 </div>
-                <flux:button type="submit" variant="primary">Filtrar</flux:button>
+                <button type="submit"
+                        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
+                    Filtrar
+                </button>
             </form>
         </div>
 
         {{-- Tarjetas de totales --}}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">Cotizaciones en el período</p>
-                <p class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p class="text-sm text-gray-500">Cotizaciones en el período</p>
+                <p class="mt-1 text-3xl font-semibold text-secondary">
                     {{ $totalCotizaciones }}
                 </p>
-                <p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                <p class="mt-1 text-xs text-gray-400">
                     {{ $desde->translatedFormat('d M Y') }} — {{ $hasta->translatedFormat('d M Y') }}
                 </p>
             </div>
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">Citas en el período</p>
-                <p class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
-                    {{ $totalCitas }}
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p class="text-sm text-gray-500">Total facturado en el período</p>
+                <p class="mt-1 text-3xl font-semibold text-secondary">
+                    ${{ number_format($totalFacturado, 2) }}
                 </p>
-                <p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                <p class="mt-1 text-xs text-gray-400">
                     {{ $desde->translatedFormat('d M Y') }} — {{ $hasta->translatedFormat('d M Y') }}
                 </p>
             </div>
@@ -50,23 +53,23 @@
 
         {{-- Gráfica de serie temporal --}}
         @php
-            $labelsChart    = $periodos->map(fn($p) => $p['label'])->values();
-            $cotizChart     = $periodos->map(fn($p) => $p['cotizaciones'])->values();
-            $citasChart     = $periodos->map(fn($p) => $p['citas'])->values();
+            $labelsChart = $periodos->map(fn($p) => $p['label'])->values();
+            $cotizChart  = $periodos->map(fn($p) => $p['cotizaciones'])->values();
+            $montoChart  = $periodos->map(fn($p) => $p['monto'])->values();
         @endphp
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-            <p class="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <p class="mb-4 text-sm font-medium text-gray-700">
                 Actividad por {{ $agrupar === 'dia' ? 'día' : 'semana' }}
             </p>
-            <div class="mb-4 flex gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+            <div class="mb-4 flex gap-4 text-xs text-gray-500">
                 <span class="flex items-center gap-1.5">
-                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-secondary"></span>
                     Cotizaciones
                 </span>
                 <span class="flex items-center gap-1.5">
-                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                    Citas
+                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-primary"></span>
+                    Monto ($)
                 </span>
             </div>
             <div style="position:relative; height:220px;">
@@ -79,7 +82,7 @@
         (function() {
             const labels    = @json($labelsChart);
             const cotizData = @json($cotizChart);
-            const citasData = @json($citasChart);
+            const montoData = @json($montoChart);
 
             const ctx = document.getElementById('actividadChart').getContext('2d');
             new Chart(ctx, {
@@ -90,22 +93,24 @@
                         {
                             label: 'Cotizaciones',
                             data: cotizData,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            borderColor: '#1b2d4f',
+                            backgroundColor: 'rgba(27,45,79,0.08)',
                             borderWidth: 2,
                             pointRadius: 3,
                             tension: 0.3,
                             fill: true,
+                            yAxisID: 'y',
                         },
                         {
-                            label: 'Citas',
-                            data: citasData,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16,185,129,0.1)',
+                            label: 'Monto',
+                            data: montoData,
+                            borderColor: '#f5a623',
+                            backgroundColor: 'rgba(245,166,35,0.12)',
                             borderWidth: 2,
                             pointRadius: 3,
                             tension: 0.3,
                             fill: true,
+                            yAxisID: 'y1',
                         }
                     ]
                 },
@@ -120,8 +125,15 @@
                         },
                         y: {
                             beginAtZero: true,
+                            position: 'left',
                             ticks: { stepSize: 1, precision: 0, color: '#a1a1aa', font: { size: 11 } },
                             grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            ticks: { color: '#a1a1aa', font: { size: 11 } },
+                            grid: { display: false }
                         }
                     }
                 }
@@ -129,36 +141,45 @@
         })();
         </script>
 
-        {{-- Top centros e instituciones --}}
+        {{-- Estado de cotizaciones y top productos --}}
         <div class="grid gap-4 lg:grid-cols-2">
 
-            {{-- Top centros --}}
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                <p class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Top centros de agenda</p>
-                @forelse($topCentros as $centro)
-                    <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-zinc-100 dark:border-zinc-800' : '' }}">
-                        <span class="text-sm text-zinc-700 dark:text-zinc-300">{{ $centro->nombre }}</span>
-                        <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                            {{ $centro->citas_count }} cita{{ $centro->citas_count !== 1 ? 's' : '' }}
+            {{-- Cotizaciones por estado --}}
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p class="mb-3 text-sm font-medium text-gray-700">Cotizaciones por estado</p>
+                @php
+                    $badgeColores = [
+                        'borrador'  => 'bg-gray-100 text-gray-600',
+                        'enviada'   => 'bg-blue-50 text-blue-700',
+                        'aceptada'  => 'bg-emerald-50 text-emerald-700',
+                        'rechazada' => 'bg-red-50 text-red-700',
+                        'expirada'  => 'bg-amber-50 text-amber-700',
+                    ];
+                @endphp
+                @foreach($estados as $estado => $total)
+                    <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
+                        <span class="text-sm text-gray-700 capitalize">{{ $estado }}</span>
+                        <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeColores[$estado] ?? 'bg-gray-100 text-gray-600' }}">
+                            {{ $total }}
                         </span>
                     </div>
-                @empty
-                    <p class="text-sm text-zinc-400 dark:text-zinc-500">Sin datos en el período</p>
-                @endforelse
+                @endforeach
             </div>
 
-            {{-- Top instituciones --}}
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                <p class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Top instituciones</p>
-                @forelse($topInstituciones as $hospital)
-                    <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-zinc-100 dark:border-zinc-800' : '' }}">
-                        <span class="text-sm text-zinc-700 dark:text-zinc-300">{{ $hospital->nombre_corto ?? $hospital->nombre }}</span>
-                        <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                            {{ $hospital->cotizaciones_count }} cot.
+            {{-- Top productos --}}
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p class="mb-3 text-sm font-medium text-gray-700">Productos más cotizados</p>
+                @forelse($topProductos as $item)
+                    <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
+                        <span class="text-sm text-gray-700">
+                            {{ $item->producto->nombre ?? 'Producto eliminado' }}
+                        </span>
+                        <span class="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary-content">
+                            {{ $item->cantidad_total }} uds · {{ $item->veces_cotizado }} cot.
                         </span>
                     </div>
                 @empty
-                    <p class="text-sm text-zinc-400 dark:text-zinc-500">Sin datos en el período</p>
+                    <p class="text-sm text-gray-400">Sin datos en el período</p>
                 @endforelse
             </div>
 

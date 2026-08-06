@@ -26,15 +26,28 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: #002745;
-    --color-accent-content: #003a63;
+    /* ── Paleta de marca ───────────────────────────── */
+    --color-primary: #f5a623;
+    --color-primary-content: #7a5210;
+
+    --color-secondary: #1b2d4f;
+    --color-secondary-content: #0d1728;
+
+    --color-brand-accent: #ffc000;
+    --color-brand-accent-content: #7a5c00;
+
+    --color-page-background: #dadada;
+
+    /* ── Mapeo a variables internas de Flux ──────────── */
+    --color-accent: #f5a623;
+    --color-accent-content: #7a5210;
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: #004a80;
-        --color-accent-content: #6aadde;
+        --color-accent: #f5a623;
+        --color-accent-content: #ffc000;
         --color-accent-foreground: var(--color-white);
     }
 }
@@ -47,6 +60,10 @@
     ::backdrop,
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
+    }
+
+    body {
+        background-color: var(--color-page-background);
     }
 }
 

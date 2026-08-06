@@ -1,6 +1,5 @@
-<x-layouts::app :title="'Editar ' . $cotizacion->folio">
+<x-layouts::app :title="__('Editar cotización') . ' ' . $cotizacion->folio">
 
-    {{-- Encabezado --}}
     <div class="mb-6 flex items-center gap-4">
         <a href="{{ route('cotizaciones.show', $cotizacion) }}"
            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
@@ -9,287 +8,435 @@
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Editar cotización</h1>
-            <p class="text-sm text-gray-500">{{ $cotizacion->folio }}</p>
+            <h1 class="text-2xl font-semibold text-secondary">Editar {{ $cotizacion->folio }}</h1>
+            <p class="text-sm text-gray-500">Actualiza los datos de la cotización</p>
         </div>
     </div>
 
-    @if($errors->any())
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <ul class="list-disc list-inside space-y-1">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
+    <div x-data="cotizacionWizard()" class="max-w-4xl">
+
+        {{-- Stepper --}}
+        <div class="mb-8 flex items-center">
+            <template x-for="(label, index) in pasos" :key="index">
+                <div class="flex items-center" :class="index < pasos.length - 1 ? 'flex-1' : ''">
+                    <button type="button"
+                            @click="irAPaso(index + 1)"
+                            class="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors"
+                            :class="paso >= index + 1 ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-400'">
+                        <span x-show="paso > index + 1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                        </span>
+                        <span x-show="paso <= index + 1" x-text="index + 1"></span>
+                    </button>
+                    <div class="ml-3 mr-4">
+                        <p class="text-xs font-medium text-gray-400">Paso <span x-text="index + 1"></span></p>
+                        <p class="text-sm font-medium text-gray-700" x-text="label"></p>
+                    </div>
+                    <template x-if="index < pasos.length - 1">
+                        <div class="h-px flex-1 bg-gray-200"></div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        {{-- Alertas de validación --}}
+        <div x-show="errores.length > 0" x-cloak class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p class="text-sm font-medium text-red-700">Corrige lo siguiente antes de continuar:</p>
+            <ul class="mt-1 list-disc pl-5 text-sm text-red-600">
+                <template x-for="error in errores" :key="error">
+                    <li x-text="error"></li>
+                </template>
             </ul>
         </div>
-    @endif
 
-    <form method="POST" action="{{ route('cotizaciones.update', $cotizacion) }}"
-          x-data="cotizacionEdit()"
-          x-init="init()">
-        @csrf
-        @method('PUT')
+        <form method="POST" action="{{ route('cotizaciones.update', $cotizacion) }}" @submit="return validarPaso(3)">
+            @csrf
+            @method('PUT')
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {{-- ── PASO 1: Datos del cliente ─────────────────────── --}}
+            <div x-show="paso === 1" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Datos del cliente</p>
 
-            {{-- Columna izquierda --}}
-            <div class="space-y-6 lg:col-span-2">
-
-                {{-- Médico --}}
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-4 text-sm font-semibold text-gray-700">Médico solicitante</h2>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Médico *</label>
-                        <select name="medico_id"
-                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                required>
-                            <option value="">Seleccionar médico...</option>
-                            @foreach($medicos as $m)
-                                <option value="{{ $m->id }}"
-                                    {{ old('medico_id', $cotizacion->medico_id) == $m->id ? 'selected' : '' }}>
-                                    {{ $m->nombre_completo }}
-                                    @if($m->especialidad) — {{ $m->especialidad }} @endif
-                                </option>
-                            @endforeach
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Prefijo</label>
+                        <select name="cliente_prefijo" x-model="cliente.prefijo"
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            <option value="">—</option>
+                            <option>Sr.</option>
+                            <option>Sra.</option>
+                            <option>Dr.</option>
+                            <option>Dra.</option>
+                            <option>Ing.</option>
+                            <option>Lic.</option>
                         </select>
-                        @error('medico_id')
-                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                        @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="mb-1 block text-sm font-medium text-gray-700">
+                            Nombre <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="cliente_nombre" x-model="cliente.nombre"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Apellidos</label>
+                        <input type="text" name="cliente_apellidos" x-model="cliente.apellidos"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
                 </div>
 
-                {{-- Institución --}}
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-4 text-sm font-semibold text-gray-700">Institución (opcional)</h2>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Hospital / Institución</label>
-                        <select name="hospital_id"
-                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            <option value="">Sin institución</option>
-                            @foreach($hospitales as $h)
-                                <option value="{{ $h->id }}"
-                                    {{ old('hospital_id', $cotizacion->hospital_id) == $h->id ? 'selected' : '' }}>
-                                    {{ $h->nombre }}
-                                    @if($h->procedencia) ({{ $h->procedencia }}) @endif
-                                </option>
-                            @endforeach
-                        </select>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Empresa</label>
+                        <input type="text" name="cliente_empresa" x-model="cliente.empresa"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
+                        <input type="text" name="cliente_telefono" x-model="cliente.telefono"
+                               placeholder="Incluye lada, ej. 5215512345678"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
                 </div>
 
-                {{-- Estudios --}}
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h2 class="text-sm font-semibold text-gray-700">Estudios</h2>
-                        <button type="button"
-                                @click="agregarEstudio()"
-                                class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors"
-                                style="background-color:#002745;">
-                            + Agregar estudio
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" name="cliente_email" x-model="cliente.email"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Dirección</label>
+                        <input type="text" name="cliente_direccion" x-model="cliente.direccion"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── PASO 2: Productos ─────────────────────────────── --}}
+            <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Productos</p>
+
+                <div class="relative">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto</label>
+                    <input type="text" x-model="busqueda" @input.debounce.300ms="buscarProductos"
+                           @focus="mostrarResultados = true"
+                           @keydown.escape="mostrarResultados = false"
+                           placeholder="Escribe el nombre del producto..."
+                           autocomplete="off"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+
+                    <div x-show="mostrarResultados && (resultados.length > 0 || busqueda.length > 1)"
+                         x-cloak @click.outside="mostrarResultados = false"
+                         class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
+                        <template x-for="producto in resultados" :key="producto.id">
+                            <button type="button" @click="agregarProducto(producto)"
+                                    class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                                <img :src="producto.imagen_url" x-show="producto.imagen_url" class="size-8 rounded object-cover border border-gray-200">
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-900" x-text="producto.nombre"></p>
+                                    <p class="text-xs text-gray-400">$<span x-text="Number(producto.precio_unitario).toFixed(2)"></span></p>
+                                </div>
+                            </button>
+                        </template>
+                        <button type="button" x-show="busqueda.length > 1" @click="agregarProductoNuevo()"
+                                class="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-secondary hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Agregar "<span x-text="busqueda"></span>" como nuevo producto
                         </button>
                     </div>
+                </div>
 
-                    @error('estudios')
-                        <p class="mb-3 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
+                <div class="overflow-hidden rounded-lg border border-gray-200">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left">
+                            <tr>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Cantidad</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Precio unit.</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Subtotal</th>
+                                <th class="px-3 py-2 w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="(item, index) in items" :key="item.uid">
+                                <tr>
+                                    <td class="px-3 py-2">
+                                        <input type="text" x-model="item.nombre"
+                                               :name="'productos['+index+'][nombre]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        <input type="hidden" :name="'productos['+index+'][id]'" :value="item.id ?? ''">
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="1" x-model.number="item.cantidad" @input="calcularTotales"
+                                               :name="'productos['+index+'][cantidad]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="0" step="0.01" x-model.number="item.precio" @input="calcularTotales"
+                                               :name="'productos['+index+'][precio]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2 font-medium text-gray-900">
+                                        $<span x-text="((item.cantidad || 0) * (item.precio || 0)).toFixed(2)"></span>
+                                    </td>
+                                    <td class="px-3 py-2 text-right">
+                                        <button type="button" @click="quitarProducto(index)" class="text-gray-400 hover:text-red-600 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="items.length === 0">
+                                <td colspan="5" class="px-3 py-8 text-center text-gray-400 text-sm">
+                                    Aún no has agregado productos.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div class="space-y-3">
-                        <template x-for="(item, index) in renglones" :key="index">
-                            <div class="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
-                                {{-- Estudio --}}
-                                <div class="flex-1">
-                                    <label class="mb-1 block text-xs font-medium text-gray-500">Estudio</label>
-                                    <select :name="'estudios[' + index + '][id]'"
-                                            x-model="item.id"
-                                            @change="autocompletarPrecio(index)"
-                                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            required>
-                                        <option value="">Seleccionar...</option>
-                                        @foreach($estudios as $e)
-                                            <option value="{{ $e->id }}"
-                                                    data-precio="{{ $e->precio_unitario }}">
-                                                {{ $e->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                {{-- Cantidad --}}
-                                <div class="w-20">
-                                    <label class="mb-1 block text-xs font-medium text-gray-500">Cant.</label>
-                                    <input type="number"
-                                           :name="'estudios[' + index + '][cantidad]'"
-                                           x-model.number="item.cantidad"
-                                           @input="recalcular()"
-                                           min="1"
-                                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                           required />
-                                </div>
-                                {{-- Precio --}}
-                                <div class="w-32">
-                                    <label class="mb-1 block text-xs font-medium text-gray-500">Precio unit.</label>
-                                    <input type="number"
-                                           :name="'estudios[' + index + '][precio]'"
-                                           x-model.number="item.precio"
-                                           @input="recalcular()"
-                                           min="0"
-                                           step="0.01"
-                                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                           required />
-                                </div>
-                                {{-- Subtotal --}}
-                                <div class="w-28 text-right">
-                                    <label class="mb-1 block text-xs font-medium text-gray-500">Subtotal</label>
-                                    <span class="block pt-2 text-sm font-medium text-gray-900"
-                                          x-text="'$' + (item.cantidad * item.precio).toFixed(2)"></span>
-                                </div>
-                                {{-- Quitar --}}
-                                <div class="pt-6">
-                                    <button type="button"
-                                            @click="quitarEstudio(index)"
-                                            class="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
-
-                        <div x-show="renglones.length === 0"
-                             class="py-6 text-center text-sm text-gray-400">
-                            Agrega al menos un estudio
+                <div class="flex justify-end">
+                    <div class="w-full max-w-xs space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Subtotal</span>
+                            <span class="font-medium text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <label class="text-gray-500">Descuento (%)</label>
+                            <input type="number" name="descuento" min="0" max="100" step="0.01"
+                                   x-model.number="descuento" @input="calcularTotales"
+                                   class="w-20 rounded border border-gray-200 px-2 py-1 text-right text-sm text-gray-900" />
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">IVA (16%)</span>
+                            <span class="font-medium text-gray-900">$<span x-text="iva.toFixed(2)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-gray-200 pt-2 text-base">
+                            <span class="font-semibold text-gray-900">Total</span>
+                            <span class="font-semibold text-secondary">$<span x-text="total.toFixed(2)"></span></span>
                         </div>
                     </div>
                 </div>
-
             </div>
 
-            {{-- Columna derecha --}}
-            <div class="space-y-6">
+            {{-- ── PASO 3: Entrega y condiciones ─────────────────── --}}
+            <div x-show="paso === 3" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Tiempo de entrega y condiciones</p>
 
-                {{-- Totales --}}
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-4 text-sm font-semibold text-gray-700">Resumen</h2>
-                    <div class="space-y-3">
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Subtotal</span>
-                            <span x-text="'$' + subtotal.toFixed(2)"></span>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-gray-600">Descuento (%)</label>
-                            <input type="number"
-                                   name="descuento"
-                                   x-model.number="descuento"
-                                   @input="recalcular()"
-                                   min="0"
-                                   max="100"
-                                   step="0.01"
-                                   value="{{ old('descuento', $cotizacion->descuento) }}"
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
-                        <div class="flex justify-between border-t border-gray-200 pt-3 text-base font-semibold text-gray-900">
-                            <span>Total</span>
-                            <span x-text="'$' + total.toFixed(2)"></span>
-                        </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Tiempo de entrega</label>
+                        <input type="text" name="tiempo_entrega" x-model="entrega.tiempo"
+                               placeholder="Ej. 10 días hábiles"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Válida hasta</label>
+                        <input type="date" name="valida_hasta" x-model="entrega.validaHasta"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
                 </div>
 
-                {{-- Opciones --}}
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-4 text-sm font-semibold text-gray-700">Opciones</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-gray-600">Válida hasta</label>
-                            <input type="date"
-                                   name="valida_hasta"
-                                   value="{{ old('valida_hasta', $cotizacion->valida_hasta?->format('Y-m-d')) }}"
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-gray-600">Notas</label>
-                            <textarea name="notas"
-                                      rows="3"
-                                      class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">{{ old('notas', $cotizacion->notas) }}</textarea>
-                        </div>
-                    </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Condiciones</label>
+                    <textarea name="condiciones" x-model="entrega.condiciones" rows="4"
+                              placeholder="Términos de pago, garantías, etc."
+                              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
                 </div>
 
-                {{-- Guardar --}}
-                <button type="submit"
-                        class="w-full rounded-lg px-4 py-3 text-sm font-medium text-white hover:opacity-90 transition-colors"
-                        style="background-color:#002745;">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Notas internas</label>
+                    <textarea name="notas" x-model="entrega.notas" rows="2"
+                              placeholder="Notas que no se muestran al cliente"
+                              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
+                </div>
+
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Resumen</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Cliente</span>
+                        <span class="font-medium text-gray-900" x-text="cliente.nombre + ' ' + cliente.apellidos"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Productos</span>
+                        <span class="font-medium text-gray-900" x-text="items.length"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Total</span>
+                        <span class="font-semibold text-secondary">$<span x-text="total.toFixed(2)"></span></span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Navegación --}}
+            <div class="mt-6 flex items-center justify-between">
+                <button type="button" @click="pasoAnterior" x-show="paso > 1"
+                        class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    Atrás
+                </button>
+                <span x-show="paso === 1"></span>
+
+                <button type="button" @click="siguientePaso" x-show="paso < 3"
+                        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
+                    Siguiente
+                </button>
+                <button type="submit" x-show="paso === 3"
+                        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
                     Guardar cambios
                 </button>
-
-                <a href="{{ route('cotizaciones.show', $cotizacion) }}"
-                   class="block w-full rounded-lg border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                    Cancelar
-                </a>
-
             </div>
-        </div>
-    </form>
-
-    @php
-        $catalogoJson = $estudios->map(fn($e) => [
-            'id'     => $e->id,
-            'nombre' => $e->nombre,
-            'precio' => (float) $e->precio_unitario,
-        ]);
-
-        $renglonesJson = $cotizacion->estudios->map(fn($r) => [
-            'id'       => $r->estudio_id,
-            'cantidad' => $r->cantidad,
-            'precio'   => (float) $r->precio_unitario,
-        ]);
-
-        $descuentoInicial = (float) old('descuento', $cotizacion->descuento);
-    @endphp
+        </form>
+    </div>
 
     <script>
-    const catalogoEstudios = @json($catalogoJson);
-    const renglonesIniciales = @json($renglonesJson);
+        function cotizacionWizard() {
+            return {
+                paso: 1,
+                pasos: ['Cliente', 'Productos', 'Entrega y condiciones'],
+                errores: [],
 
-    function cotizacionEdit() {
-        return {
-            renglones: [],
-            subtotal: 0,
-            descuento: {{ $descuentoInicial }},
-            total: 0,
+                cliente: {
+                    prefijo: @json($cotizacion->cliente_prefijo),
+                    nombre: @json($cotizacion->cliente_nombre),
+                    apellidos: @json($cotizacion->cliente_apellidos),
+                    empresa: @json($cotizacion->cliente_empresa),
+                    telefono: @json($cotizacion->cliente_telefono),
+                    email: @json($cotizacion->cliente_email),
+                    direccion: @json($cotizacion->cliente_direccion),
+                },
 
-            init() {
-                this.renglones = renglonesIniciales.length
-                    ? renglonesIniciales.map(r => ({ ...r }))
-                    : [{ id: '', cantidad: 1, precio: 0 }];
-                this.recalcular();
-            },
+                entrega: {
+                    tiempo: @json($cotizacion->tiempo_entrega),
+                    validaHasta: @json($cotizacion->valida_hasta?->toDateString()),
+                    condiciones: @json($cotizacion->condiciones),
+                    notas: @json($cotizacion->notas),
+                },
 
-            agregarEstudio() {
-                this.renglones.push({ id: '', cantidad: 1, precio: 0 });
-            },
+                busqueda: '',
+                resultados: [],
+                mostrarResultados: false,
 
-            quitarEstudio(index) {
-                if (this.renglones.length === 1) return;
-                this.renglones.splice(index, 1);
-                this.recalcular();
-            },
+                items: @json($cotizacion->productos->map(fn($item) => [
+                    'uid' => $item->id,
+                    'id' => $item->producto_id,
+                    'nombre' => $item->producto->nombre ?? '(producto eliminado)',
+                    'cantidad' => $item->cantidad,
+                    'precio' => (float) $item->precio_unitario,
+                ])),
+                siguienteUid: {{ $cotizacion->productos->max('id') + 1 }},
 
-            autocompletarPrecio(index) {
-                const id = parseInt(this.renglones[index].id);
-                const estudio = catalogoEstudios.find(e => e.id === id);
-                if (estudio) {
-                    this.renglones[index].precio = estudio.precio;
-                }
-                this.recalcular();
-            },
+                descuento: {{ $cotizacion->descuento }},
+                subtotal: 0,
+                iva: 0,
+                total: 0,
 
-            recalcular() {
-                this.subtotal = this.renglones.reduce((sum, r) => sum + (r.cantidad * r.precio), 0);
-                const desc = this.subtotal * (this.descuento / 100);
-                this.total = this.subtotal - desc;
-            },
-        };
-    }
+                init() {
+                    this.calcularTotales();
+                },
+
+                async buscarProductos() {
+                    if (this.busqueda.length < 2) {
+                        this.resultados = [];
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`{{ route('productos.buscar') }}?q=${encodeURIComponent(this.busqueda)}`);
+                        this.resultados = await res.json();
+                    } catch (e) {
+                        this.resultados = [];
+                    }
+                },
+
+                agregarProducto(producto) {
+                    this.items.push({
+                        uid: this.siguienteUid++,
+                        id: producto.id,
+                        nombre: producto.nombre,
+                        cantidad: 1,
+                        precio: parseFloat(producto.precio_unitario),
+                    });
+                    this.busqueda = '';
+                    this.resultados = [];
+                    this.mostrarResultados = false;
+                    this.calcularTotales();
+                },
+
+                agregarProductoNuevo() {
+                    this.items.push({
+                        uid: this.siguienteUid++,
+                        id: null,
+                        nombre: this.busqueda,
+                        cantidad: 1,
+                        precio: 0,
+                    });
+                    this.busqueda = '';
+                    this.resultados = [];
+                    this.mostrarResultados = false;
+                    this.calcularTotales();
+                },
+
+                quitarProducto(index) {
+                    this.items.splice(index, 1);
+                    this.calcularTotales();
+                },
+
+                calcularTotales() {
+                    this.subtotal = this.items.reduce((sum, item) => sum + ((item.cantidad || 0) * (item.precio || 0)), 0);
+                    const conDescuento = this.subtotal - (this.subtotal * ((this.descuento || 0) / 100));
+                    this.iva = conDescuento * 0.16;
+                    this.total = conDescuento + this.iva;
+                },
+
+                irAPaso(n) {
+                    if (n < this.paso || this.validarPaso(this.paso)) {
+                        this.paso = n;
+                    }
+                },
+
+                siguientePaso() {
+                    if (this.validarPaso(this.paso)) {
+                        this.paso++;
+                    }
+                },
+
+                pasoAnterior() {
+                    this.paso--;
+                },
+
+                validarPaso(n) {
+                    this.errores = [];
+
+                    if (n === 1) {
+                        if (!this.cliente.nombre.trim()) {
+                            this.errores.push('El nombre del cliente es requerido.');
+                        }
+                    }
+
+                    if (n === 2) {
+                        if (this.items.length === 0) {
+                            this.errores.push('Agrega al menos un producto.');
+                        }
+                        this.items.forEach((item, i) => {
+                            if (!item.nombre || !item.nombre.trim()) {
+                                this.errores.push(`El producto #${i + 1} necesita un nombre.`);
+                            }
+                            if (!item.cantidad || item.cantidad < 1) {
+                                this.errores.push(`El producto #${i + 1} necesita una cantidad válida.`);
+                            }
+                        });
+                    }
+
+                    return this.errores.length === 0;
+                },
+            };
+        }
     </script>
 
 </x-layouts::app>

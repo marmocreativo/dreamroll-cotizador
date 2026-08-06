@@ -2,12 +2,11 @@
 
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Usuarios</h1>
+            <h1 class="text-2xl font-semibold text-secondary">Usuarios</h1>
             <p class="text-sm text-gray-500">Cuentas con acceso al sistema</p>
         </div>
         <a href="{{ route('usuarios.create') }}"
-        class="rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-colors"
-        style="background-color:#002745;">
+        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
             + Nuevo usuario
         </a>
     </div>
@@ -27,8 +26,7 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
-                                <div class="flex size-8 items-center justify-center rounded-full text-xs font-semibold text-white"
-                                     style="background-color:#002745;">
+                                <div class="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-white">
                                     {{ $usuario->initials() }}
                                 </div>
                                 <span class="font-medium text-gray-900">{{ $usuario->name }}</span>

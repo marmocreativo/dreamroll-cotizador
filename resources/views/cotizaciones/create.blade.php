@@ -1,6 +1,5 @@
 <x-layouts::app :title="__('Nueva cotización')">
 
-    {{-- Encabezado --}}
     <div class="mb-6 flex items-center gap-4">
         <a href="{{ route('cotizaciones.index') }}"
            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
@@ -9,420 +8,298 @@
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Nueva cotización</h1>
-            <p class="text-sm text-gray-500" x-data x-text="`Paso ${$store.wizard.paso} de 3`"></p>
+            <h1 class="text-2xl font-semibold text-secondary">Nueva cotización</h1>
+            <p class="text-sm text-gray-500">Completa los 3 pasos para generar la cotización</p>
         </div>
     </div>
 
-    <div x-data="wizardCotizacion({{ session('paso_error', 1) }})" class="max-w-2xl">
+    <div x-data="cotizacionWizard()" class="max-w-4xl">
 
-        {{-- Indicador de pasos --}}
+        {{-- Stepper --}}
         <div class="mb-8 flex items-center">
-            <template x-for="(label, i) in pasos" :key="i">
-                <div class="flex items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="flex size-7 items-center justify-center rounded-full text-xs font-semibold transition-colors"
-                             :class="paso > i + 1 ? 'bg-amber-400 text-white' :
-                                     paso === i + 1 ? 'text-white' : 'bg-gray-100 text-gray-400'"
-                             :style="paso === i + 1 ? 'background-color:#002745' : ''">
-                            <span x-show="paso <= i + 1" x-text="i + 1"></span>
-                            <svg x-show="paso > i + 1" xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            <template x-for="(label, index) in pasos" :key="index">
+                <div class="flex items-center" :class="index < pasos.length - 1 ? 'flex-1' : ''">
+                    <button type="button"
+                            @click="irAPaso(index + 1)"
+                            class="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors"
+                            :class="paso >= index + 1 ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-400'">
+                        <span x-show="paso > index + 1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
-                        </div>
-                        <span class="text-sm font-medium"
-                              :class="paso === i + 1 ? 'text-gray-900' : 'text-gray-400'"
-                              x-text="label"></span>
+                        </span>
+                        <span x-show="paso <= index + 1" x-text="index + 1"></span>
+                    </button>
+                    <div class="ml-3 mr-4">
+                        <p class="text-xs font-medium text-gray-400">Paso <span x-text="index + 1"></span></p>
+                        <p class="text-sm font-medium text-gray-700" x-text="label"></p>
                     </div>
-                    <div x-show="i < pasos.length - 1" class="mx-3 h-px w-8 bg-gray-200"></div>
+                    <template x-if="index < pasos.length - 1">
+                        <div class="h-px flex-1 bg-gray-200"></div>
+                    </template>
                 </div>
             </template>
         </div>
 
-        <form method="POST" action="{{ route('cotizaciones.store') }}">
+        {{-- Alertas de validación --}}
+        <div x-show="errores.length > 0" x-cloak class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p class="text-sm font-medium text-red-700">Corrige lo siguiente antes de continuar:</p>
+            <ul class="mt-1 list-disc pl-5 text-sm text-red-600">
+                <template x-for="error in errores" :key="error">
+                    <li x-text="error"></li>
+                </template>
+            </ul>
+        </div>
+
+        <form method="POST" action="{{ route('cotizaciones.store') }}" @submit="return validarPaso(3)">
             @csrf
 
-            {{-- ══════════════════════════════════════ --}}
-            {{-- PASO 1 — Médico                        --}}
-            {{-- ══════════════════════════════════════ --}}
-            <div x-show="paso === 1">
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-700">Selecciona o registra el médico</h2>
-                    <p class="mb-4 text-sm text-gray-400">Busca un médico existente o registra uno nuevo.</p>
+            {{-- ── PASO 1: Datos del cliente ─────────────────────── --}}
+            <div x-show="paso === 1" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Datos del cliente</p>
 
-                    {{-- Toggle modo --}}
-                    <div class="mb-4 flex rounded-lg border border-gray-200 overflow-hidden">
-                        <button type="button"
-                                @click="medicoModo = 'existente'; medicoId = null"
-                                :class="medicoModo === 'existente' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-                                :style="medicoModo === 'existente' ? 'background-color:#002745' : ''"
-                                class="flex-1 px-4 py-2 text-sm font-medium transition-colors">
-                            Médico existente
-                        </button>
-                        <button type="button"
-                                @click="medicoModo = 'nuevo'; medicoId = null"
-                                :class="medicoModo === 'nuevo' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-                                :style="medicoModo === 'nuevo' ? 'background-color:#002745' : ''"
-                                class="flex-1 px-4 py-2 text-sm border-l border-gray-200 font-medium transition-colors">
-                            Registrar nuevo
-                        </button>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Prefijo</label>
+                        <select name="cliente_prefijo" x-model="cliente.prefijo"
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            <option value="">—</option>
+                            <option>Sr.</option>
+                            <option>Sra.</option>
+                            <option>Dr.</option>
+                            <option>Dra.</option>
+                            <option>Ing.</option>
+                            <option>Lic.</option>
+                        </select>
                     </div>
-
-                    {{-- Médico existente --}}
-                    <div x-show="medicoModo === 'existente'" class="space-y-3">
-                        <input type="text"
-                               x-model="busquedaMedico"
-                               placeholder="Buscar médico por nombre..."
-                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-
-                        {{-- Seleccionado --}}
-                        <template x-if="medicoId">
-                            <div class="flex items-center justify-between rounded-lg border px-4 py-3"
-                                 style="border-color:#002745; background-color:#f0f4f8;">
-                                <div>
-                                    <p class="font-medium text-gray-900" x-text="medicoLabel"></p>
-                                    <p class="text-sm text-gray-400" x-text="medicoEspecialidadLabel"></p>
-                                </div>
-                                <button type="button" @click="medicoId = null; medicoLabel = ''; medicoEspecialidadLabel = ''"
-                                        class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </template>
-
-                        {{-- Lista filtrada --}}
-                        <template x-if="!medicoId">
-                            <div class="flex flex-col gap-1">
-                                <template x-for="m in medicosFiltrados()" :key="m.id">
-                                    <button type="button"
-                                            @click="seleccionarMedico(m)"
-                                            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2.5 text-left hover:border-gray-400 hover:bg-gray-50 transition-colors">
-                                        <div>
-                                            <span class="font-medium text-gray-900" x-text="m.nombre_completo"></span>
-                                            <span class="ml-2 text-sm text-gray-400" x-text="m.especialidad"></span>
-                                        </div>
-                                        <span class="text-xs text-gray-400" x-text="m.hospital"></span>
-                                    </button>
-                                </template>
-                                <p x-show="medicosFiltrados().length === 0"
-                                   class="text-sm text-gray-400 px-1">No se encontraron médicos.</p>
-                            </div>
-                        </template>
-
-                        <input type="hidden" name="medico_id" :value="medicoId" />
+                    <div class="sm:col-span-2">
+                        <label class="mb-1 block text-sm font-medium text-gray-700">
+                            Nombre <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="cliente_nombre" x-model="cliente.nombre"
+                               value="{{ old('cliente_nombre') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
-
-                    {{-- Médico nuevo --}}
-                    <div x-show="medicoModo === 'nuevo'" class="space-y-4">
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Prefijo</label>
-                                <select name="medico_prefijo"
-                                        class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                    <option value="">—</option>
-                                    <option value="Dr."  @selected(old('medico_prefijo') === 'Dr.')>Dr.</option>
-                                    <option value="Dra." @selected(old('medico_prefijo') === 'Dra.')>Dra.</option>
-                                    <option value="Sr."  @selected(old('medico_prefijo') === 'Sr.')>Sr.</option>
-                                    <option value="Sra." @selected(old('medico_prefijo') === 'Sra.')>Sra.</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Nombre <span class="text-red-500">*</span></label>
-                                <input type="text" name="medico_nombre"
-                                       value="{{ old('medico_nombre') }}"
-                                       placeholder="Nombre(s)"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Apellido</label>
-                                <input type="text" name="medico_apellido"
-                                       value="{{ old('medico_apellido') }}"
-                                       placeholder="Apellidos"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
-                                <input type="email" name="medico_email"
-                                       value="{{ old('medico_email') }}"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
-                                <input type="text" name="medico_telefono"
-                                       value="{{ old('medico_telefono') }}"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Especialidad</label>
-                                <input type="text" name="medico_especialidad"
-                                       value="{{ old('medico_especialidad') }}"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Cédula</label>
-                                <input type="text" name="medico_cedula"
-                                       value="{{ old('medico_cedula') }}"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Apellidos</label>
+                        <input type="text" name="cliente_apellidos" x-model="cliente.apellidos"
+                               value="{{ old('cliente_apellidos') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
+                </div>
 
-                    <input type="hidden" name="medico_modo" :value="medicoModo" />
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Empresa</label>
+                        <input type="text" name="cliente_empresa" x-model="cliente.empresa"
+                               value="{{ old('cliente_empresa') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
+                        <input type="text" name="cliente_telefono" x-model="cliente.telefono"
+                               value="{{ old('cliente_telefono') }}"
+                               placeholder="Incluye lada, ej. 5215512345678"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" name="cliente_email" x-model="cliente.email"
+                               value="{{ old('cliente_email') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Dirección</label>
+                        <input type="text" name="cliente_direccion" x-model="cliente.direccion"
+                               value="{{ old('cliente_direccion') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
                 </div>
             </div>
 
-            {{-- ══════════════════════════════════════ --}}
-            {{-- PASO 2 — Institución                   --}}
-            {{-- ══════════════════════════════════════ --}}
-            <div x-show="paso === 2">
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-700">Institución</h2>
-                    <p class="mb-4 text-sm text-gray-400">Este campo es opcional.</p>
+            {{-- ── PASO 2: Productos ─────────────────────────────── --}}
+            <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Productos</p>
 
-                    <div class="mb-4 flex rounded-lg border border-gray-200 overflow-hidden">
-                        <button type="button"
-                                @click="hospitalModo = 'existente'; hospitalId = null"
-                                :class="hospitalModo === 'existente' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-                                :style="hospitalModo === 'existente' ? 'background-color:#002745' : ''"
-                                class="flex-1 px-4 py-2 text-sm font-medium transition-colors">
-                            Institución existente
-                        </button>
-                        <button type="button"
-                                @click="hospitalModo = 'nuevo'; hospitalId = null"
-                                :class="hospitalModo === 'nuevo' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-                                :style="hospitalModo === 'nuevo' ? 'background-color:#002745' : ''"
-                                class="flex-1 px-4 py-2 text-sm border-l border-gray-200 font-medium transition-colors">
-                            Registrar nueva
-                        </button>
-                    </div>
+                {{-- Buscador con autocompletado --}}
+                <div class="relative">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto</label>
+                    <input type="text" x-model="busqueda" @input.debounce.300ms="buscarProductos"
+                           @focus="mostrarResultados = true"
+                           @keydown.escape="mostrarResultados = false"
+                           placeholder="Escribe el nombre del producto..."
+                           autocomplete="off"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
 
-                    {{-- Existente --}}
-                    <div x-show="hospitalModo === 'existente'" class="space-y-3">
-                        <input type="text"
-                               x-model="busquedaHospital"
-                               placeholder="Buscar institución..."
-                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-
-                        <template x-if="hospitalId">
-                            <div class="flex items-center justify-between rounded-lg border px-4 py-3"
-                                 style="border-color:#002745; background-color:#f0f4f8;">
-                                <div>
-                                    <p class="font-medium text-gray-900" x-text="hospitalLabel"></p>
-                                    <p class="text-sm text-gray-400" x-text="hospitalProcedenciaLabel"></p>
+                    <div x-show="mostrarResultados && (resultados.length > 0 || busqueda.length > 1)"
+                         x-cloak @click.outside="mostrarResultados = false"
+                         class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
+                        <template x-for="producto in resultados" :key="producto.id">
+                            <button type="button" @click="agregarProducto(producto)"
+                                    class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                                <img :src="producto.imagen_url" x-show="producto.imagen_url" class="size-8 rounded object-cover border border-gray-200">
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-900" x-text="producto.nombre"></p>
+                                    <p class="text-xs text-gray-400">$<span x-text="Number(producto.precio_unitario).toFixed(2)"></span></p>
                                 </div>
-                                <button type="button" @click="hospitalId = null; hospitalLabel = ''"
-                                        class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
+                            </button>
                         </template>
-
-                        <template x-if="!hospitalId">
-                            <div class="flex flex-col gap-1">
-                                <template x-for="h in hospitalesFiltrados()" :key="h.id">
-                                    <button type="button"
-                                            @click="seleccionarHospital(h)"
-                                            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2.5 text-left hover:border-gray-400 hover:bg-gray-50 transition-colors">
-                                        <span class="font-medium text-gray-900" x-text="h.nombre"></span>
-                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600"
-                                              x-show="h.procedencia" x-text="h.procedencia"></span>
-                                    </button>
-                                </template>
-                                <p x-show="hospitalesFiltrados().length === 0"
-                                   class="text-sm text-gray-400 px-1">No se encontraron instituciones.</p>
-                            </div>
-                        </template>
-
-                        <input type="hidden" name="hospital_id" :value="hospitalId" />
+                        <button type="button" x-show="busqueda.length > 1" @click="agregarProductoNuevo()"
+                                class="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-secondary hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Agregar "<span x-text="busqueda"></span>" como nuevo producto
+                        </button>
                     </div>
+                </div>
 
-                    {{-- Nueva --}}
-                    <div x-show="hospitalModo === 'nuevo'" class="space-y-4">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">Nombre <span class="text-red-500">*</span></label>
-                            <input type="text" name="hospital_nombre"
-                                   value="{{ old('hospital_nombre') }}"
-                                   placeholder="Nombre de la institución"
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                {{-- Tabla de productos agregados --}}
+                <div class="overflow-hidden rounded-lg border border-gray-200">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left">
+                            <tr>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Cantidad</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Precio unit.</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Subtotal</th>
+                                <th class="px-3 py-2 w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="(item, index) in items" :key="item.uid">
+                                <tr>
+                                    <td class="px-3 py-2">
+                                        <input type="text" x-model="item.nombre"
+                                               :name="'productos['+index+'][nombre]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        <input type="hidden" :name="'productos['+index+'][id]'" :value="item.id ?? ''">
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="1" x-model.number="item.cantidad" @input="calcularTotales"
+                                               :name="'productos['+index+'][cantidad]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="0" step="0.01" x-model.number="item.precio" @input="calcularTotales"
+                                               :name="'productos['+index+'][precio]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2 font-medium text-gray-900">
+                                        $<span x-text="((item.cantidad || 0) * (item.precio || 0)).toFixed(2)"></span>
+                                    </td>
+                                    <td class="px-3 py-2 text-right">
+                                        <button type="button" @click="quitarProducto(index)" class="text-gray-400 hover:text-red-600 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="items.length === 0">
+                                <td colspan="5" class="px-3 py-8 text-center text-gray-400 text-sm">
+                                    Aún no has agregado productos.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Descuento y totales --}}
+                <div class="flex justify-end">
+                    <div class="w-full max-w-xs space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Subtotal</span>
+                            <span class="font-medium text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Procedencia</label>
-                                <select name="hospital_procedencia"
-                                        class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                    <option value="">Sin especificar</option>
-                                    <option value="PRIVADO" @selected(old('hospital_procedencia') === 'PRIVADO')>Privado</option>
-                                    <option value="IMSS"    @selected(old('hospital_procedencia') === 'IMSS')>IMSS</option>
-                                    <option value="ISSSTE"  @selected(old('hospital_procedencia') === 'ISSSTE')>ISSSTE</option>
-                                    <option value="SSA"     @selected(old('hospital_procedencia') === 'SSA')>SSA</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-700">Ciudad</label>
-                                <input type="text" name="hospital_ciudad"
-                                       value="{{ old('hospital_ciudad') }}"
-                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <label class="text-gray-500">Descuento (%)</label>
+                            <input type="number" name="descuento" min="0" max="100" step="0.01"
+                                   x-model.number="descuento" @input="calcularTotales"
+                                   class="w-20 rounded border border-gray-200 px-2 py-1 text-right text-sm text-gray-900" />
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">IVA (16%)</span>
+                            <span class="font-medium text-gray-900">$<span x-text="iva.toFixed(2)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-gray-200 pt-2 text-base">
+                            <span class="font-semibold text-gray-900">Total</span>
+                            <span class="font-semibold text-secondary">$<span x-text="total.toFixed(2)"></span></span>
                         </div>
                     </div>
-
-                    <input type="hidden" name="hospital_modo" :value="hospitalModo" />
                 </div>
             </div>
 
-            {{-- ══════════════════════════════════════ --}}
-            {{-- PASO 3 — Estudios                      --}}
-            {{-- ══════════════════════════════════════ --}}
-            <div x-show="paso === 3">
-                <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-700">Agrega los estudios</h2>
+            {{-- ── PASO 3: Entrega y condiciones ─────────────────── --}}
+            <div x-show="paso === 3" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                <p class="text-sm font-medium text-gray-700">Tiempo de entrega y condiciones</p>
 
-                    <input type="text"
-                           x-model="busquedaEstudio"
-                           placeholder="Buscar estudio por nombre o área..."
-                           class="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-
-                    {{-- Resultados búsqueda --}}
-                    <template x-if="true">
-                        <div class="mb-4 flex flex-col gap-1">
-                            <template x-for="e in estudiosFiltrados()" :key="e.id">
-                                <button type="button"
-                                        @click="agregarEstudio(e)"
-                                        class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2.5 text-left hover:border-gray-400 hover:bg-gray-50 transition-colors">
-                                    <div>
-                                        <span class="font-medium text-gray-900" x-text="e.nombre"></span>
-                                        <span class="ml-2 text-xs text-gray-400" x-text="e.area_terapeutica"></span>
-                                    </div>
-                                    <span class="text-sm font-medium" style="color:#002745;"
-                                          x-text="'$' + Number(e.precio_unitario).toLocaleString('es-MX', {minimumFractionDigits:2})"></span>
-                                </button>
-                            </template>
-                            <p x-show="estudiosFiltrados().length === 0"
-                               class="text-sm text-gray-400 px-1">No se encontraron estudios.</p>
-                        </div>
-                    </template>
-
-                    {{-- Estudios seleccionados --}}
-                    <template x-if="estudios.length > 0">
-                        <div class="mb-4 flex flex-col gap-2">
-                            <template x-for="(item, i) in estudios" :key="item.id">
-                                <div class="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
-                                    <div class="flex-1">
-                                        <p class="text-sm font-medium text-gray-900" x-text="item.nombre"></p>
-                                        <p class="text-xs text-gray-400"
-                                           x-text="'$' + Number(item.precio_unitario).toLocaleString('es-MX', {minimumFractionDigits:2}) + ' c/u'"></p>
-                                    </div>
-                                    <input type="number"
-                                           min="1"
-                                           x-model.number="item.cantidad"
-                                           @change="item.cantidad = Math.max(1, item.cantidad)"
-                                           class="w-20 rounded-lg border border-gray-200 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                                    <span class="w-28 text-right text-sm font-medium text-gray-900"
-                                          x-text="'$' + (item.precio_unitario * item.cantidad).toLocaleString('es-MX', {minimumFractionDigits:2})"></span>
-                                    <button type="button" @click="quitarEstudio(i)"
-                                            class="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-
-                                    {{-- Campos ocultos para el POST --}}
-                                    <input type="hidden" :name="`estudios[${i}][id]`" :value="item.id" />
-                                    <input type="hidden" :name="`estudios[${i}][cantidad]`" :value="item.cantidad" />
-                                    <input type="hidden" :name="`estudios[${i}][precio]`" :value="item.precio_unitario" />
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-
-                    @error('estudios')
-                        <p class="mb-4 text-sm text-red-500">{{ $message }}</p>
-                    @enderror
-
-                    {{-- Totales --}}
-                    <template x-if="estudios.length > 0">
-                        <div class="mb-4 flex flex-col items-end gap-1 border-t border-gray-200 pt-4">
-                            <div class="flex w-full max-w-xs justify-between text-sm text-gray-600">
-                                <span>Subtotal</span>
-                                <span x-text="'$' + subtotal().toLocaleString('es-MX', {minimumFractionDigits:2})"></span>
-                            </div>
-                            <template x-if="Number(descuento) > 0">
-                                <div class="flex w-full max-w-xs justify-between text-sm">
-                                    <span class="text-gray-600" x-text="`Descuento (${descuento}%)`"></span>
-                                    <span class="text-red-500"
-                                          x-text="'-$' + descuentoImporte().toLocaleString('es-MX', {minimumFractionDigits:2})"></span>
-                                </div>
-                            </template>
-                            <div class="flex w-full max-w-xs justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-900">
-                                <span>Total</span>
-                                <span x-text="'$' + total().toLocaleString('es-MX', {minimumFractionDigits:2})"></span>
-                            </div>
-                        </div>
-                    </template>
-
-                    {{-- Opciones adicionales --}}
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 border-t border-gray-200 pt-4">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">Descuento (%)</label>
-                            <input type="number"
-                                   name="descuento"
-                                   x-model="descuento"
-                                   min="0" max="100" step="0.5"
-                                   placeholder="0"
-                                   value="{{ old('descuento', 0) }}"
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">Válida hasta</label>
-                            <input type="date"
-                                   name="valida_hasta"
-                                   value="{{ old('valida_hasta') }}"
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Tiempo de entrega</label>
+                        <input type="text" name="tiempo_entrega" x-model="entrega.tiempo"
+                               value="{{ old('tiempo_entrega') }}"
+                               placeholder="Ej. 10 días hábiles"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
-                    <div class="mt-4">
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Notas</label>
-                        <textarea name="notas" rows="2"
-                                  placeholder="Observaciones generales..."
-                                  class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">{{ old('notas') }}</textarea>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Válida hasta</label>
+                        <input type="date" name="valida_hasta" x-model="entrega.validaHasta"
+                               value="{{ old('valida_hasta') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Condiciones</label>
+                    <textarea name="condiciones" x-model="entrega.condiciones" rows="4"
+                              placeholder="Términos de pago, garantías, etc."
+                              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">{{ old('condiciones') }}</textarea>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Notas internas</label>
+                    <textarea name="notas" x-model="entrega.notas" rows="2"
+                              placeholder="Notas que no se muestran al cliente"
+                              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">{{ old('notas') }}</textarea>
+                </div>
+
+                {{-- Resumen final --}}
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Resumen</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Cliente</span>
+                        <span class="font-medium text-gray-900" x-text="cliente.nombre + ' ' + cliente.apellidos"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Productos</span>
+                        <span class="font-medium text-gray-900" x-text="items.length"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Total</span>
+                        <span class="font-semibold text-secondary">$<span x-text="total.toFixed(2)"></span></span>
                     </div>
                 </div>
             </div>
 
             {{-- Navegación --}}
             <div class="mt-6 flex items-center justify-between">
-                <button type="button"
-                        @click="paso === 1 ? window.location.href='{{ route("cotizaciones.index") }}' : paso--"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                    </svg>
-                    <span x-text="paso === 1 ? 'Cancelar' : 'Anterior'"></span>
+                <button type="button" @click="pasoAnterior" x-show="paso > 1"
+                        class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    Atrás
                 </button>
+                <span x-show="paso === 1"></span>
 
-                <button x-show="paso < 3"
-                        type="button"
-                        @click="siguientePaso()"
-                        class="rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-colors"
-                        style="background-color:#002745;">
+                <button type="button" @click="siguientePaso" x-show="paso < 3"
+                        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
                     Siguiente
                 </button>
-
-                <button x-show="paso === 3"
-                        type="submit"
-                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-colors"
-                        style="background-color:#002745;">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
+                <button type="submit" x-show="paso === 3"
+                        class="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
                     Crear cotización
                 </button>
             </div>
@@ -430,155 +307,135 @@
     </div>
 
     <script>
-        @php
-            $medicosJs = $medicos->map(fn($m) => [
-                'id'              => $m->id,
-                'nombre_completo' => $m->nombre_completo,
-                'especialidad'    => $m->especialidad ?? '',
-                'hospital'        => $m->hospital?->nombre ?? '',
-            ]);
-
-            $hospitalesJs = $hospitales->map(fn($h) => [
-                'id'          => $h->id,
-                'nombre'      => $h->nombre,
-                'procedencia' => $h->procedencia ?? '',
-            ]);
-
-            $estudiosJs = $estudios->map(fn($e) => [
-                'id'              => $e->id,
-                'nombre'          => $e->nombre,
-                'area_terapeutica'=> $e->area_terapeutica ?? '',
-                'precio_unitario' => (float) $e->precio_unitario,
-            ]);
-        @endphp
-
-        const _medicos    = @json($medicosJs);
-        const _hospitales = @json($hospitalesJs);
-        const _estudios   = @json($estudiosJs);
-
-        function wizardCotizacion(pasoInicial = 1) {
+        function cotizacionWizard() {
             return {
-                paso: pasoInicial,
-                pasos: ['Médico', 'Institución', 'Estudios'],
+                paso: 1,
+                pasos: ['Cliente', 'Productos', 'Entrega y condiciones'],
+                errores: [],
 
-                // Paso 1
-                medicoModo: '{{ old("medico_modo", "nuevo") }}',
-                medicoId: {{ old('medico_id') ? old('medico_id') : 'null' }},
-                medicoLabel: '',
-                medicoEspecialidadLabel: '',
-                busquedaMedico: '',
+                cliente: {
+                    prefijo: '{{ old('cliente_prefijo') }}',
+                    nombre: '{{ old('cliente_nombre') }}',
+                    apellidos: '{{ old('cliente_apellidos') }}',
+                    empresa: '{{ old('cliente_empresa') }}',
+                    telefono: '{{ old('cliente_telefono') }}',
+                    email: '{{ old('cliente_email') }}',
+                    direccion: '{{ old('cliente_direccion') }}',
+                },
 
-                // Paso 2
-                hospitalModo: '{{ old("hospital_modo", "existente") }}',
-                hospitalId: {{ old('hospital_id') ? old('hospital_id') : 'null' }},
-                hospitalLabel: '',
-                hospitalProcedenciaLabel: '',
-                busquedaHospital: '',
+                entrega: {
+                    tiempo: '{{ old('tiempo_entrega') }}',
+                    validaHasta: '{{ old('valida_hasta') }}',
+                    condiciones: '{{ old('condiciones') }}',
+                    notas: '{{ old('notas') }}',
+                },
 
-                // Paso 3
-                estudios: [],
-                busquedaEstudio: '',
-                descuento: {{ old('descuento', 0) }},
+                busqueda: '',
+                resultados: [],
+                mostrarResultados: false,
+                items: [],
+                siguienteUid: 1,
 
-                init() {
-                    // Repoblar médico seleccionado si viene de old()
-                    if (this.medicoId) {
-                        const m = _medicos.find(m => m.id == this.medicoId);
-                        if (m) {
-                            this.medicoLabel = m.nombre_completo;
-                            this.medicoEspecialidadLabel = m.especialidad;
-                        }
+                descuento: 0,
+                subtotal: 0,
+                iva: 0,
+                total: 0,
+
+                async buscarProductos() {
+                    if (this.busqueda.length < 2) {
+                        this.resultados = [];
+                        return;
                     }
-                    // Repoblar hospital seleccionado si viene de old()
-                    if (this.hospitalId) {
-                        const h = _hospitales.find(h => h.id == this.hospitalId);
-                        if (h) {
-                            this.hospitalLabel = h.nombre;
-                            this.hospitalProcedenciaLabel = h.procedencia;
-                        }
+                    try {
+                        const res = await fetch(`{{ route('productos.buscar') }}?q=${encodeURIComponent(this.busqueda)}`);
+                        this.resultados = await res.json();
+                    } catch (e) {
+                        this.resultados = [];
                     }
                 },
 
-                medicosFiltrados() {
-                    const q = this.busquedaMedico.toLowerCase();
-                    return _medicos.filter(m =>
-                        !q || m.nombre_completo.toLowerCase().includes(q) ||
-                        m.especialidad.toLowerCase().includes(q)
-                    ).slice(0, 10);
+                agregarProducto(producto) {
+                    this.items.push({
+                        uid: this.siguienteUid++,
+                        id: producto.id,
+                        nombre: producto.nombre,
+                        cantidad: 1,
+                        precio: parseFloat(producto.precio_unitario),
+                    });
+                    this.busqueda = '';
+                    this.resultados = [];
+                    this.mostrarResultados = false;
+                    this.calcularTotales();
                 },
 
-                seleccionarMedico(m) {
-                    this.medicoId = m.id;
-                    this.medicoLabel = m.nombre_completo;
-                    this.medicoEspecialidadLabel = m.especialidad;
-                    this.busquedaMedico = '';
+                agregarProductoNuevo() {
+                    this.items.push({
+                        uid: this.siguienteUid++,
+                        id: null,
+                        nombre: this.busqueda,
+                        cantidad: 1,
+                        precio: 0,
+                    });
+                    this.busqueda = '';
+                    this.resultados = [];
+                    this.mostrarResultados = false;
+                    this.calcularTotales();
                 },
 
-                hospitalesFiltrados() {
-                    const q = this.busquedaHospital.toLowerCase();
-                    return _hospitales.filter(h =>
-                        !q || h.nombre.toLowerCase().includes(q)
-                    ).slice(0, 10);
+                quitarProducto(index) {
+                    this.items.splice(index, 1);
+                    this.calcularTotales();
                 },
 
-                seleccionarHospital(h) {
-                    this.hospitalId = h.id;
-                    this.hospitalLabel = h.nombre;
-                    this.hospitalProcedenciaLabel = h.procedencia;
-                    this.busquedaHospital = '';
+                calcularTotales() {
+                    this.subtotal = this.items.reduce((sum, item) => sum + ((item.cantidad || 0) * (item.precio || 0)), 0);
+                    const conDescuento = this.subtotal - (this.subtotal * ((this.descuento || 0) / 100));
+                    this.iva = conDescuento * 0.16;
+                    this.total = conDescuento + this.iva;
                 },
 
-                estudiosFiltrados() {
-                    const q = this.busquedaEstudio.toLowerCase();
-                    const ids = this.estudios.map(e => e.id);
-                    return _estudios.filter(e =>
-                        !ids.includes(e.id) &&
-                        (!q || e.nombre.toLowerCase().includes(q) ||
-                        e.area_terapeutica.toLowerCase().includes(q))
-                    ).slice(0, 20);
-                },
-
-                agregarEstudio(e) {
-                    if (this.estudios.find(s => s.id === e.id)) return;
-                    this.estudios.push({ ...e, cantidad: 1 });
-                    this.busquedaEstudio = '';
-                },
-
-                quitarEstudio(i) {
-                    this.estudios.splice(i, 1);
-                },
-
-                subtotal() {
-                    return this.estudios.reduce((s, e) => s + e.precio_unitario * e.cantidad, 0);
-                },
-
-                descuentoImporte() {
-                    return this.subtotal() * (Number(this.descuento) / 100);
-                },
-
-                total() {
-                    return this.subtotal() - this.descuentoImporte();
+                irAPaso(n) {
+                    if (n < this.paso || this.validarPaso(this.paso)) {
+                        this.paso = n;
+                    }
                 },
 
                 siguientePaso() {
-                    if (this.paso === 1 && this.medicoModo === 'existente' && !this.medicoId) {
-                        alert('Selecciona un médico para continuar.');
-                        return;
+                    if (this.validarPaso(this.paso)) {
+                        this.paso++;
                     }
-                    if (this.paso === 1 && this.medicoModo === 'nuevo') {
-                        const nombre = document.querySelector('[name="medico_nombre"]').value;
-                        if (!nombre.trim()) {
-                            alert('El nombre del médico es requerido.');
-                            return;
+                },
+
+                pasoAnterior() {
+                    this.paso--;
+                },
+
+                validarPaso(n) {
+                    this.errores = [];
+
+                    if (n === 1) {
+                        if (!this.cliente.nombre.trim()) {
+                            this.errores.push('El nombre del cliente es requerido.');
                         }
                     }
-                    if (this.paso === 3 && this.estudios.length === 0) {
-                        alert('Agrega al menos un estudio.');
-                        return;
+
+                    if (n === 2) {
+                        if (this.items.length === 0) {
+                            this.errores.push('Agrega al menos un producto.');
+                        }
+                        this.items.forEach((item, i) => {
+                            if (!item.nombre || !item.nombre.trim()) {
+                                this.errores.push(`El producto #${i + 1} necesita un nombre.`);
+                            }
+                            if (!item.cantidad || item.cantidad < 1) {
+                                this.errores.push(`El producto #${i + 1} necesita una cantidad válida.`);
+                            }
+                        });
                     }
-                    if (this.paso < 3) this.paso++;
+
+                    return this.errores.length === 0;
                 },
-            }
+            };
         }
     </script>
 

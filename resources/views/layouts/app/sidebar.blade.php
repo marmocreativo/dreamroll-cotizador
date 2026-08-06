@@ -1,66 +1,69 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
+        <style>
+            /* Popover de usuario (dropdown de Flux) en color secondary */
+            [data-flux-menu] {
+                background-color: #1b2d4f !important;
+                border-color: rgba(255,255,255,0.1) !important;
+            }
+            [data-flux-menu] [data-flux-menu-item] {
+                color: rgba(255,255,255,0.85) !important;
+            }
+            [data-flux-menu] [data-flux-menu-item]:hover {
+                background-color: rgba(255,255,255,0.1) !important;
+                color: #ffffff !important;
+            }
+            [data-flux-menu] [data-flux-heading] {
+                color: rgba(255,255,255,0.9) !important;
+            }
+            [data-flux-menu] [data-flux-text] {
+                color: rgba(255,255,255,0.5) !important;
+            }
+            [data-flux-menu] [data-flux-separator] {
+                border-color: rgba(255,255,255,0.1) !important;
+            }
+        </style>
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-gray-200 bg-white dark:border-gray-700 dark:bg-white">
+    <body class="min-h-screen" style="background-color:#dadada;">
+        <flux:sidebar sticky collapsible="mobile" class="border-e-0" style="background-color:#1b2d4f;">
             <flux:sidebar.header>
-                <img src="/favicon.svg" class="h-10 w-auto mx-auto" />
-                <flux:sidebar.collapse class="lg:hidden" />
+                <img src="{{ asset('logo_blanco.png') }}" class="h-32 w-auto mx-auto" />
+                <flux:sidebar.collapse class="lg:hidden !text-white/70 hover:!text-white" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Principal')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')">
+                <flux:sidebar.group :heading="__('Principal')" class="grid **:data-[flux-heading]:!text-white/50">
+                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-plus" :href="route('cotizaciones.create')" :current="request()->routeIs('cotizaciones.create')">
+                    <flux:sidebar.item icon="document-plus" :href="route('cotizaciones.create')" :current="request()->routeIs('cotizaciones.create')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
                         {{ __('Nueva cotización') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-duplicate" :href="route('cotizaciones.index')" :current="request()->routeIs('cotizaciones.*')">
+                    <flux:sidebar.item icon="document-duplicate" :href="route('cotizaciones.index')" :current="request()->routeIs('cotizaciones.*')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
                         {{ __('Cotizaciones') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('Catálogos')" class="grid">
-                    <flux:sidebar.item icon="user-group" :href="route('medicos.index')" :current="request()->routeIs('medicos.*')">
-                        {{ __('Médicos') }}
+                <flux:sidebar.group :heading="__('Catálogos')" class="grid **:data-[flux-heading]:!text-white/50">
+                    <flux:sidebar.item icon="cube" :href="route('productos.index')" :current="request()->routeIs('productos.*')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
+                        {{ __('Productos') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-office-2" :href="route('instituciones.index')" :current="request()->routeIs('instituciones.*')">
-                        {{ __('Instituciones') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="beaker" :href="route('estudios.index')" :current="request()->routeIs('estudios.*')">
-                        {{ __('Estudios') }}
+                    <flux:sidebar.item icon="photo" :href="route('eventos.index')" :current="request()->routeIs('eventos.*')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
+                        {{ __('Eventos') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('Agenda')" class="grid">
-                    <flux:sidebar.item icon="calendar" :href="route('agenda.calendario')" :current="request()->routeIs('agenda.calendario')">
-                        {{ __('Calendario') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="users" :href="route('agenda.pacientes.index')" :current="request()->routeIs('agenda.pacientes.*')">
-                        {{ __('Pacientes') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-storefront" :href="route('agenda.centros.index')" :current="request()->routeIs('agenda.centros.*')">
-                        {{ __('Centros') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-                
-                <flux:sidebar.group :heading="__('Sistema')" class="grid">
-                    <flux:sidebar.item icon="users" :href="route('usuarios.index')" :current="request()->routeIs('usuarios.*')">
+                <flux:sidebar.group :heading="__('Sistema')" class="grid **:data-[flux-heading]:!text-white/50">
+                    <flux:sidebar.item icon="users" :href="route('usuarios.index')" :current="request()->routeIs('usuarios.*')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
                         {{ __('Usuarios') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-                <flux:sidebar.group :heading="__('Herramientas')" class="grid">
-                    <flux:sidebar.item icon="user-group" :href="route('fusion.index', 'medicos')" :current="request()->routeIs('fusion.*') && request()->route('tipo') === 'medicos'">
-                        {{ __('Fusionar médicos') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-office-2" :href="route('fusion.index', 'instituciones')" :current="request()->routeIs('fusion.*') && request()->route('tipo') === 'instituciones'">
-                        {{ __('Fusionar instituciones') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="users" :href="route('fusion.index', 'pacientes')" :current="request()->routeIs('fusion.*') && request()->route('tipo') === 'pacientes'">
-                        {{ __('Fusionar pacientes') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
@@ -71,8 +74,8 @@
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+        <flux:header class="lg:hidden" style="background-color:#1b2d4f; border-color:rgba(255,255,255,0.1);">
+            <flux:sidebar.toggle class="lg:hidden !text-white/70 hover:!text-white" icon="bars-2" inset="left" />
 
             <flux:spacer />
 
@@ -80,6 +83,7 @@
                 <flux:profile
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"
+                    class="!text-white"
                 />
 
                 <flux:menu>

@@ -3,17 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CotizacionController;
-use App\Http\Controllers\MedicoController;
-use App\Http\Controllers\InstitucionController;
-use App\Http\Controllers\EstudioController;
-use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\AgendaPacienteController;
-use App\Http\Controllers\AgendaCentroController;
-use App\Http\Controllers\FusionController;
+use App\Http\Controllers\EventoController;
+use App\Http\Controllers\PortafolioController;
 
 // ── Pública ───────────────────────────────────────────
 Route::get('/', fn() => view('welcome'))->name('welcome');
+Route::get('portafolio', [PortafolioController::class, 'index'])->name('portafolio.index');
+Route::get('portafolio/{evento}', [PortafolioController::class, 'show'])->name('portafolio.show');
 
 Route::get('cotizaciones/{cotizacion}/pdf/ver', [CotizacionController::class, 'verPdf'])
     ->name('cotizaciones.pdf.ver');
@@ -24,19 +22,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::redirect('/home', '/dashboard')->name('home');
 
-    // Fusión de duplicados
-    Route::prefix('fusion')->name('fusion.')->group(function () {
-        Route::get('{tipo}', [FusionController::class, 'index'])->name('index');
-        Route::post('{tipo}/revisar', [FusionController::class, 'revisar'])->name('revisar');
-        Route::post('{tipo}/confirmar', [FusionController::class, 'confirmar'])->name('confirmar');
-    });
-
     // Cotizaciones
     Route::get('cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'descargarPdf'])
-    ->name('cotizaciones.pdf');
+        ->name('cotizaciones.pdf');
 
-    
-    
     Route::resource('cotizaciones', CotizacionController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->parameters(['cotizaciones' => 'cotizacion']);
@@ -47,38 +36,27 @@ Route::middleware('auth')->group(function () {
     Route::post('cotizaciones/{cotizacion}/enviar', [CotizacionController::class, 'enviar'])
         ->name('cotizaciones.enviar');
 
-    // Médicos
-    Route::resource('medicos', MedicoController::class);
+    Route::get('cotizaciones/{cotizacion}/whatsapp', [CotizacionController::class, 'enviarWhatsapp'])
+        ->name('cotizaciones.whatsapp');
 
-    // Instituciones
-    Route::resource('instituciones', InstitucionController::class)
-        ->parameters(['instituciones' => 'hospital']);
+    Route::get('cotizaciones-exportar', [CotizacionController::class, 'exportarExcel'])
+        ->name('cotizaciones.exportar');
 
-    // Estudios
-    Route::resource('estudios', EstudioController::class);
+    // Autocompletado de productos para el wizard (paso 2)
+    Route::get('productos/buscar', [ProductoController::class, 'buscar'])
+        ->name('productos.buscar');
 
-    // Agenda
-    Route::prefix('agenda')->name('agenda.')->group(function () {
-        Route::get('/', [AgendaController::class, 'index'])->name('calendario');
+    // Productos
+    Route::resource('productos', ProductoController::class);
 
-        // Nueva cita wizard
-        Route::get('/nueva-cita',  [AgendaController::class, 'create'])->name('citas.create');
-        Route::post('/nueva-cita', [AgendaController::class, 'store'])->name('citas.store');
-
-        Route::get('/citas/{cita}/edit',  [AgendaController::class, 'edit'])->name('citas.edit');
-        Route::put('/citas/{cita}',       [AgendaController::class, 'update'])->name('citas.update');
-
-        Route::post('/citas/{cita}/enviar', [AgendaController::class, 'enviarCita'])->name('citas.enviar');
-
-        // Detalle de cita (para fetch del modal)
-        Route::get('/citas/{cita}',          [AgendaController::class, 'show'])->name('citas.show');
-        Route::patch('/citas/{cita}/estado', [AgendaController::class, 'actualizarEstado'])->name('citas.estado');
-        Route::delete('/citas/{cita}',       [AgendaController::class, 'destroy'])->name('citas.destroy');
-
-        Route::resource('pacientes', AgendaPacienteController::class);
-        Route::resource('centros',   AgendaCentroController::class)
-            ->parameters(['centros' => 'centro']);
-    });
+    // Eventos (galería de portafolio)
+    Route::resource('eventos', EventoController::class);
+    Route::post('eventos/{evento}/imagenes', [EventoController::class, 'subirImagen'])
+        ->name('eventos.imagenes.subir');
+    Route::post('eventos/{evento}/imagenes/reordenar', [EventoController::class, 'reordenarImagenes'])
+        ->name('eventos.imagenes.reordenar');
+    Route::delete('eventos/{evento}/imagenes/{imagen}', [EventoController::class, 'eliminarImagen'])
+        ->name('eventos.imagenes.eliminar');
 
     // Usuarios
     Route::resource('usuarios', UsuarioController::class)

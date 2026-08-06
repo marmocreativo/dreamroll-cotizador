@@ -34,7 +34,6 @@ class DatabaseSeeder extends Seeder
             'email'    => 'lmaciel@geneticlab.mx',
             'password' => Hash::make('135Lmaciel#'),
         ]);
-        $this->call(EstudiosSeeder::class);
-        $this->call(CentrosAgendaSeeder::class);
+        $this->call(ProductosSeeder::class);
     }
 }
