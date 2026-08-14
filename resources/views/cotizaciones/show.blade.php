@@ -68,12 +68,13 @@
 
                 {{-- Productos --}}
                 <div class="rounded-xl border border-gray-200 bg-white p-6">
-                    <p class="mb-3 text-sm font-medium text-gray-700">Productos</p>
+                    <p class="mb-3 text-sm font-medium text-gray-700">Productos/Servicios</p>
                     <div class="overflow-hidden rounded-lg border border-gray-200">
-                        <table class="w-full text-sm">
+<table class="w-full text-sm">
                             <thead class="bg-gray-50 text-left">
                                 <tr>
-                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto</th>
+                                    <th class="px-3 py-2 w-14"></th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Cant.</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Precio unit.</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Subtotal</th>
@@ -82,6 +83,19 @@
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($cotizacion->productos as $item)
                                     <tr>
+                                        <td class="px-3 py-2">
+                                            @if($item->producto?->imagen_url)
+                                                <img src="{{ $item->producto->imagen_url }}"
+                                                     alt="{{ $item->producto->nombre }}"
+                                                     class="size-10 rounded object-cover border border-gray-200" />
+                                            @else
+                                                <div class="flex size-10 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 15h18M2.25 4.5h19.5M4.5 4.5v15h15v-15" />
+                                                    </svg>
+                                                </div>
+                                            @endif
+                                        </td>
                                         <td class="px-3 py-2 text-gray-900">
                                             {{ $item->producto->nombre ?? 'Producto eliminado' }}
                                         </td>

@@ -51,14 +51,101 @@
             </ul>
         </div>
 
-        <form method="POST" action="{{ route('cotizaciones.update', $cotizacion) }}" @submit="return validarPaso(3)">
+        <form method="POST" action="{{ route('cotizaciones.update', $cotizacion) }}" enctype="multipart/form-data" @submit="return validarPaso(3)">
             @csrf
             @method('PUT')
 
-            {{-- ── PASO 1: Datos del cliente ─────────────────────── --}}
+            {{-- ── PASO 1: Cliente ───────────────────────────────── --}}
             <div x-show="paso === 1" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-                <p class="text-sm font-medium text-gray-700">Datos del cliente</p>
+                <p class="text-sm font-medium text-gray-700">Cliente</p>
 
+                <input type="hidden" name="cliente_id" :value="cliente.id ?? ''">
+
+                {{-- Buscador de cliente existente (oculto si ya hay uno elegido o si es "nuevo") --}}
+                <div class="relative" x-show="!cliente.id && !clienteNuevoModo" x-cloak>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar cliente</label>
+                    <input type="text" x-model="busquedaCliente" @input.debounce.300ms="buscarClientes"
+                           @focus="mostrarResultadosCliente = true"
+                           @keydown.escape="mostrarResultadosCliente = false"
+                           placeholder="Busca por empresa, nombre o RFC..."
+                           autocomplete="off"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+
+                    <div x-show="mostrarResultadosCliente && (resultadosClientes.length > 0 || busquedaCliente.length > 1)"
+                         x-cloak @click.outside="mostrarResultadosCliente = false"
+                         class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
+                        <template x-for="c in resultadosClientes" :key="c.id">
+                            <button type="button" @click="seleccionarCliente(c)"
+                                    class="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                                <span class="text-sm text-gray-900" x-text="c.empresa"></span>
+                                <span class="text-xs text-gray-400" x-text="c.contacto_nombre + ' ' + (c.contacto_apellidos || '') + (c.rfc ? ' · ' + c.rfc : '')"></span>
+                            </button>
+                        </template>
+                        <button type="button" x-show="busquedaCliente.length > 1" @click="activarClienteNuevo()"
+                                class="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-secondary hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Agregar nuevo cliente
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" x-show="!cliente.id && !clienteNuevoModo" @click="activarClienteNuevo()"
+                        class="text-sm font-medium text-secondary hover:underline">
+                    + Agregar nuevo cliente
+                </button>
+
+                {{-- Cliente seleccionado (chip con opción de cambiar) --}}
+                <div x-show="cliente.id" x-cloak class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900" x-text="cliente.empresa"></p>
+                        <p class="text-xs text-gray-400" x-text="'RFC: ' + (cliente.rfc || '—')"></p>
+                    </div>
+                    <button type="button" @click="quitarClienteSeleccionado()" class="text-xs font-medium text-gray-500 hover:text-red-600">
+                        Cambiar
+                    </button>
+                </div>
+
+                {{-- Datos fiscales (solo si es cliente nuevo) --}}
+                <template x-if="clienteNuevoModo">
+                    <div class="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Datos fiscales del nuevo cliente</p>
+                            <button type="button" @click="quitarClienteSeleccionado()" class="text-xs text-gray-400 hover:text-red-600">Cancelar</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">
+                                    Empresa <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" name="cliente_nuevo[empresa]" x-model="cliente.empresa"
+                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">RFC</label>
+                                <input type="text" name="cliente_nuevo[rfc]" x-model="cliente.rfc"
+                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">Régimen fiscal</label>
+                                <input type="text" name="cliente_nuevo[regimen_fiscal]" x-model="cliente.regimenFiscal"
+                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">Uso de CFDI</label>
+                                <input type="text" name="cliente_nuevo[uso_cfdi]" x-model="cliente.usoCfdi"
+                                       class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- Datos de contacto (editables siempre) --}}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Prefijo</label>
@@ -75,7 +162,7 @@
                     </div>
                     <div class="sm:col-span-2">
                         <label class="mb-1 block text-sm font-medium text-gray-700">
-                            Nombre <span class="text-red-500">*</span>
+                            Nombre de contacto <span class="text-red-500">*</span>
                         </label>
                         <input type="text" name="cliente_nombre" x-model="cliente.nombre"
                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
@@ -88,7 +175,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
+                    <div x-show="!clienteNuevoModo">
                         <label class="mb-1 block text-sm font-medium text-gray-700">Empresa</label>
                         <input type="text" name="cliente_empresa" x-model="cliente.empresa"
                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
@@ -117,14 +204,14 @@
 
             {{-- ── PASO 2: Productos ─────────────────────────────── --}}
             <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-                <p class="text-sm font-medium text-gray-700">Productos</p>
+                <p class="text-sm font-medium text-gray-700">Productos y Servicios</p>
 
                 <div class="relative">
-                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto</label>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto o servicio</label>
                     <input type="text" x-model="busqueda" @input.debounce.300ms="buscarProductos"
                            @focus="mostrarResultados = true"
                            @keydown.escape="mostrarResultados = false"
-                           placeholder="Escribe el nombre del producto..."
+                           placeholder="Escribe el nombre del producto o servicio..."
                            autocomplete="off"
                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
 
@@ -146,7 +233,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
-                            Agregar "<span x-text="busqueda"></span>" como nuevo producto
+                            Agregar "<span x-text="busqueda"></span>" como nuevo
                         </button>
                     </div>
                 </div>
@@ -155,7 +242,8 @@
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left">
                             <tr>
-                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-14">Img</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Cantidad</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Precio unit.</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Subtotal</th>
@@ -165,6 +253,21 @@
                         <tbody class="divide-y divide-gray-100">
                             <template x-for="(item, index) in items" :key="item.uid">
                                 <tr>
+                                    <td class="px-3 py-2">
+                                        <label class="group relative block size-10 cursor-pointer overflow-hidden rounded border border-gray-200 bg-gray-50">
+                                            <img :src="item.imagenPreview || item.imagen_url" x-show="item.imagenPreview || item.imagen_url"
+                                                 class="size-full object-cover" />
+                                            <span x-show="!item.imagenPreview && !item.imagen_url"
+                                                  class="flex size-full items-center justify-center text-gray-300">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 15h18M2.25 4.5h19.5M4.5 4.5v15h15v-15" />
+                                                </svg>
+                                            </span>
+                                            <input type="file" accept="image/*" class="hidden"
+                                                   :name="'productos['+index+'][imagen]'"
+                                                   @change="cambiarImagenProducto(index, $event)" />
+                                        </label>
+                                    </td>
                                     <td class="px-3 py-2">
                                         <input type="text" x-model="item.nombre"
                                                :name="'productos['+index+'][nombre]'"
@@ -194,7 +297,7 @@
                                 </tr>
                             </template>
                             <tr x-show="items.length === 0">
-                                <td colspan="5" class="px-3 py-8 text-center text-gray-400 text-sm">
+                                <td colspan="6" class="px-3 py-8 text-center text-gray-400 text-sm">
                                     Aún no has agregado productos.
                                 </td>
                             </tr>
@@ -262,7 +365,7 @@
                     <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Resumen</p>
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-600">Cliente</span>
-                        <span class="font-medium text-gray-900" x-text="cliente.nombre + ' ' + cliente.apellidos"></span>
+                        <span class="font-medium text-gray-900" x-text="(cliente.empresa || (cliente.nombre + ' ' + cliente.apellidos))"></span>
                     </div>
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-600">Productos</span>
@@ -295,6 +398,45 @@
         </form>
     </div>
 
+    @php
+        $clienteData = [
+            'id' => $cotizacion->cliente_id,
+            'prefijo' => $cotizacion->cliente_prefijo,
+            'nombre' => $cotizacion->cliente_nombre,
+            'apellidos' => $cotizacion->cliente_apellidos,
+            'empresa' => $cotizacion->cliente_empresa,
+            'telefono' => $cotizacion->cliente_telefono,
+            'email' => $cotizacion->cliente_email,
+            'direccion' => $cotizacion->cliente_direccion,
+            'rfc' => $cotizacion->cliente->rfc ?? null,
+            'regimenFiscal' => $cotizacion->cliente->regimen_fiscal ?? null,
+            'usoCfdi' => $cotizacion->cliente->uso_cfdi ?? null,
+        ];
+
+        $entregaData = [
+            'tiempo' => $cotizacion->tiempo_entrega,
+            'validaHasta' => optional($cotizacion->valida_hasta)->toDateString(),
+            'condiciones' => $cotizacion->condiciones,
+            'notas' => $cotizacion->notas,
+        ];
+
+        $itemsData = $cotizacion->productos->map(function ($item) {
+            $nombreProducto = $item->producto->nombre ?? 'producto eliminado';
+
+            return [
+                'uid' => $item->id,
+                'id' => $item->producto_id,
+                'nombre' => $nombreProducto,
+                'cantidad' => $item->cantidad,
+                'precio' => (float) $item->precio_unitario,
+                'imagen_url' => $item->producto->imagen_url ?? null,
+                'imagenPreview' => null,
+            ];
+        })->values();
+
+        $siguienteUidValor = $cotizacion->productos->max('id') + 1;
+    @endphp
+
     <script>
         function cotizacionWizard() {
             return {
@@ -302,35 +444,20 @@
                 pasos: ['Cliente', 'Productos', 'Entrega y condiciones'],
                 errores: [],
 
-                cliente: {
-                    prefijo: @json($cotizacion->cliente_prefijo),
-                    nombre: @json($cotizacion->cliente_nombre),
-                    apellidos: @json($cotizacion->cliente_apellidos),
-                    empresa: @json($cotizacion->cliente_empresa),
-                    telefono: @json($cotizacion->cliente_telefono),
-                    email: @json($cotizacion->cliente_email),
-                    direccion: @json($cotizacion->cliente_direccion),
-                },
+                cliente: @json($clienteData),
+                clienteNuevoModo: false,
+                busquedaCliente: '',
+                resultadosClientes: [],
+                mostrarResultadosCliente: false,
 
-                entrega: {
-                    tiempo: @json($cotizacion->tiempo_entrega),
-                    validaHasta: @json($cotizacion->valida_hasta?->toDateString()),
-                    condiciones: @json($cotizacion->condiciones),
-                    notas: @json($cotizacion->notas),
-                },
+                entrega: @json($entregaData),
 
                 busqueda: '',
                 resultados: [],
                 mostrarResultados: false,
 
-                items: @json($cotizacion->productos->map(fn($item) => [
-                    'uid' => $item->id,
-                    'id' => $item->producto_id,
-                    'nombre' => $item->producto->nombre ?? '(producto eliminado)',
-                    'cantidad' => $item->cantidad,
-                    'precio' => (float) $item->precio_unitario,
-                ])),
-                siguienteUid: {{ $cotizacion->productos->max('id') + 1 }},
+                items: @json($itemsData),
+                siguienteUid: {{ $siguienteUidValor }},
 
                 descuento: {{ $cotizacion->descuento }},
                 subtotal: 0,
@@ -339,6 +466,56 @@
 
                 init() {
                     this.calcularTotales();
+                },
+
+                async buscarClientes() {
+                    if (this.busquedaCliente.length < 2) {
+                        this.resultadosClientes = [];
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(this.busquedaCliente)}`);
+                        this.resultadosClientes = await res.json();
+                    } catch (e) {
+                        this.resultadosClientes = [];
+                    }
+                },
+
+                seleccionarCliente(c) {
+                    this.cliente = {
+                        id: c.id,
+                        prefijo: c.contacto_prefijo || '',
+                        nombre: c.contacto_nombre || '',
+                        apellidos: c.contacto_apellidos || '',
+                        empresa: c.empresa || '',
+                        telefono: c.contacto_telefono || '',
+                        email: c.contacto_email || '',
+                        direccion: c.direccion_fiscal || '',
+                        rfc: c.rfc || '',
+                        regimenFiscal: '',
+                        usoCfdi: '',
+                    };
+                    this.clienteNuevoModo = false;
+                    this.busquedaCliente = '';
+                    this.resultadosClientes = [];
+                    this.mostrarResultadosCliente = false;
+                },
+
+                activarClienteNuevo() {
+                    this.clienteNuevoModo = true;
+                    this.cliente.id = null;
+                    this.cliente.empresa = this.cliente.empresa || this.busquedaCliente;
+                    this.busquedaCliente = '';
+                    this.resultadosClientes = [];
+                    this.mostrarResultadosCliente = false;
+                },
+
+                quitarClienteSeleccionado() {
+                    this.cliente = {
+                        id: null, prefijo: '', nombre: '', apellidos: '', empresa: '',
+                        telefono: '', email: '', direccion: '', rfc: '', regimenFiscal: '', usoCfdi: '',
+                    };
+                    this.clienteNuevoModo = false;
                 },
 
                 async buscarProductos() {
@@ -361,6 +538,8 @@
                         nombre: producto.nombre,
                         cantidad: 1,
                         precio: parseFloat(producto.precio_unitario),
+                        imagen_url: producto.imagen_url || null,
+                        imagenPreview: null,
                     });
                     this.busqueda = '';
                     this.resultados = [];
@@ -375,11 +554,19 @@
                         nombre: this.busqueda,
                         cantidad: 1,
                         precio: 0,
+                        imagen_url: null,
+                        imagenPreview: null,
                     });
                     this.busqueda = '';
                     this.resultados = [];
                     this.mostrarResultados = false;
                     this.calcularTotales();
+                },
+
+                cambiarImagenProducto(index, event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    this.items[index].imagenPreview = URL.createObjectURL(file);
                 },
 
                 quitarProducto(index) {
@@ -414,8 +601,11 @@
                     this.errores = [];
 
                     if (n === 1) {
+                        if (this.clienteNuevoModo && !this.cliente.empresa.trim()) {
+                            this.errores.push('La empresa del nuevo cliente es requerida.');
+                        }
                         if (!this.cliente.nombre.trim()) {
-                            this.errores.push('El nombre del cliente es requerido.');
+                            this.errores.push('El nombre de contacto es requerido.');
                         }
                     }
 

@@ -44,13 +44,14 @@
     </div>
 
     <p class="intro">
-        De acuerdo con su amable solicitud hacemos llegar nuestra propuesta para los productos requeridos.
+        De acuerdo con su amable solicitud hacemos llegar nuestra propuesta para los productos/servicios requeridos.
     </p>
 
     <table>
         <thead>
             <tr>
-                <th>Producto</th>
+                <th style="width: 50px;"></th>
+                <th>Producto/Servicio</th>
                 <th class="text-right">Cantidad</th>
                 <th class="text-right">Precio unitario</th>
                 <th class="text-right">Subtotal</th>
@@ -58,7 +59,20 @@
         </thead>
         <tbody>
             @foreach ($cotizacion->productos as $renglon)
+            @php
+                $imagenBase64 = null;
+                if ($renglon->producto?->imagen && \Illuminate\Support\Facades\Storage::disk('public')->exists($renglon->producto->imagen)) {
+                    $imagenBase64 = 'data:image/webp;base64,' . base64_encode(
+                        \Illuminate\Support\Facades\Storage::disk('public')->get($renglon->producto->imagen)
+                    );
+                }
+            @endphp
             <tr>
+                <td>
+                    @if ($imagenBase64)
+                        <img src="{{ $imagenBase64 }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" />
+                    @endif
+                </td>
                 <td>
                     <strong>{{ $renglon->producto?->nombre ?? '—' }}</strong>
                 </td>

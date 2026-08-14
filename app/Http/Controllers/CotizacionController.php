@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Cotizacion;
 use App\Models\Producto;
 use App\Exports\CotizacionesExport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CotizacionController extends Controller
@@ -37,6 +41,11 @@ class CotizacionController extends Controller
     {
         $validated = $request->validate([
             // Paso 1 — cliente
+            'cliente_id'                    => 'nullable|exists:clientes,id',
+            'cliente_nuevo.empresa'         => 'required_without:cliente_id|nullable|string|max:150',
+            'cliente_nuevo.rfc'             => 'nullable|string|max:20',
+            'cliente_nuevo.regimen_fiscal'  => 'nullable|string|max:100',
+            'cliente_nuevo.uso_cfdi'        => 'nullable|string|max:100',
             'cliente_prefijo'    => 'nullable|string|max:20',
             'cliente_nombre'     => 'required|string|max:100',
             'cliente_apellidos'  => 'nullable|string|max:100',
@@ -52,6 +61,7 @@ class CotizacionController extends Controller
             'productos.*.nombre'        => 'required|string|max:150',
             'productos.*.cantidad'      => 'required|integer|min:1',
             'productos.*.precio'        => 'required|numeric|min:0',
+            'productos.*.imagen'        => 'nullable|image|max:5120',
 
             // Paso 3 — entrega y condiciones
             'tiempo_entrega' => 'nullable|string|max:100',
@@ -60,7 +70,10 @@ class CotizacionController extends Controller
             'notas'          => 'nullable|string',
         ]);
 
+        $clienteId = $this->resolverClienteId($validated);
+
         $cotizacion = Cotizacion::create([
+            'cliente_id'        => $clienteId,
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
@@ -79,18 +92,8 @@ class CotizacionController extends Controller
             'total'             => 0,
         ]);
 
-        foreach ($validated['productos'] as $item) {
-            // Si el producto no existe en catálogo, se crea (auto-alta desde el wizard)
-            if (empty($item['id'])) {
-                $producto = Producto::create([
-                    'nombre'          => $item['nombre'],
-                    'precio_unitario' => $item['precio'],
-                    'activo'          => true,
-                ]);
-                $productoId = $producto->id;
-            } else {
-                $productoId = $item['id'];
-            }
+        foreach ($request->input('productos') as $index => $item) {
+            $productoId = $this->resolverProductoId($item, $request->file("productos.{$index}.imagen"));
 
             $cotizacion->productos()->create([
                 'producto_id'     => $productoId,
@@ -115,7 +118,7 @@ class CotizacionController extends Controller
 
     public function edit(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto');
+        $cotizacion->load('productos.producto', 'cliente');
 
         return view('cotizaciones.edit', compact('cotizacion'));
     }
@@ -123,6 +126,11 @@ class CotizacionController extends Controller
     public function update(Request $request, Cotizacion $cotizacion)
     {
         $validated = $request->validate([
+            'cliente_id'                    => 'nullable|exists:clientes,id',
+            'cliente_nuevo.empresa'         => 'required_without:cliente_id|nullable|string|max:150',
+            'cliente_nuevo.rfc'             => 'nullable|string|max:20',
+            'cliente_nuevo.regimen_fiscal'  => 'nullable|string|max:100',
+            'cliente_nuevo.uso_cfdi'        => 'nullable|string|max:100',
             'cliente_prefijo'    => 'nullable|string|max:20',
             'cliente_nombre'     => 'required|string|max:100',
             'cliente_apellidos'  => 'nullable|string|max:100',
@@ -136,13 +144,17 @@ class CotizacionController extends Controller
             'productos.*.nombre'        => 'required|string|max:150',
             'productos.*.cantidad'      => 'required|integer|min:1',
             'productos.*.precio'        => 'required|numeric|min:0',
+            'productos.*.imagen'        => 'nullable|image|max:5120',
             'tiempo_entrega' => 'nullable|string|max:100',
             'condiciones'    => 'nullable|string',
             'valida_hasta'   => 'nullable|date',
             'notas'          => 'nullable|string',
         ]);
 
+        $clienteId = $this->resolverClienteId($validated, $cotizacion->cliente_id);
+
         $cotizacion->update([
+            'cliente_id'        => $clienteId,
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
@@ -159,17 +171,8 @@ class CotizacionController extends Controller
 
         $cotizacion->productos()->delete();
 
-        foreach ($validated['productos'] as $item) {
-            if (empty($item['id'])) {
-                $producto = Producto::create([
-                    'nombre'          => $item['nombre'],
-                    'precio_unitario' => $item['precio'],
-                    'activo'          => true,
-                ]);
-                $productoId = $producto->id;
-            } else {
-                $productoId = $item['id'];
-            }
+        foreach ($request->input('productos') as $index => $item) {
+            $productoId = $this->resolverProductoId($item, $request->file("productos.{$index}.imagen"));
 
             $cotizacion->productos()->create([
                 'producto_id'     => $productoId,
@@ -214,6 +217,7 @@ class CotizacionController extends Controller
         $cotizacion->load('productos.producto');
 
         \Illuminate\Support\Facades\Mail::to($request->email)
+            ->bcc('leopoldo.maciel@dream-roll.com')
             ->send(new \App\Mail\CotizacionMail($cotizacion));
 
         $cotizacion->update(['estado' => 'enviada']);
@@ -263,5 +267,83 @@ class CotizacionController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion'));
 
         return $pdf->stream($cotizacion->folio . '.pdf');
+    }
+
+    /**
+     * Resuelve el cliente_id final: usa el existente si viene, o crea uno
+     * nuevo a partir de cliente_nuevo + los datos de contacto del paso 1.
+     * $clienteIdActual permite conservar el cliente ya ligado en update()
+     * cuando no se manda ni cliente_id ni cliente_nuevo (no debería pasar
+     * desde el wizard, pero es un resguardo).
+     */
+    private function resolverClienteId(array $validated, ?int $clienteIdActual = null): ?int
+    {
+        if (!empty($validated['cliente_id'])) {
+            return $validated['cliente_id'];
+        }
+
+        if (!empty($validated['cliente_nuevo']['empresa'] ?? null)) {
+            return Cliente::create([
+                'empresa'            => $validated['cliente_nuevo']['empresa'],
+                'rfc'                => $validated['cliente_nuevo']['rfc'] ?? null,
+                'regimen_fiscal'     => $validated['cliente_nuevo']['regimen_fiscal'] ?? null,
+                'uso_cfdi'           => $validated['cliente_nuevo']['uso_cfdi'] ?? null,
+                'direccion_fiscal'   => $validated['cliente_direccion'] ?? null,
+                'contacto_prefijo'   => $validated['cliente_prefijo'] ?? null,
+                'contacto_nombre'    => $validated['cliente_nombre'],
+                'contacto_apellidos' => $validated['cliente_apellidos'] ?? null,
+                'contacto_telefono'  => $validated['cliente_telefono'] ?? null,
+                'contacto_email'     => $validated['cliente_email'] ?? null,
+                'activo'             => true,
+            ])->id;
+        }
+
+        return $clienteIdActual;
+    }
+
+    /**
+     * Resuelve el producto_id de un renglón del wizard: si trae id usa el
+     * existente (y le actualiza la imagen si se subió una nueva); si no,
+     * da de alta el producto (auto-alta desde el wizard), con imagen si vino.
+     */
+    private function resolverProductoId(array $item, $imagen = null): int
+    {
+        if (empty($item['id'])) {
+            $producto = Producto::create([
+                'nombre'          => $item['nombre'],
+                'precio_unitario' => $item['precio'],
+                'activo'          => true,
+                'imagen'          => $imagen ? $this->procesarImagenProducto($imagen) : null,
+            ]);
+
+            return $producto->id;
+        }
+
+        if ($imagen) {
+            $producto = Producto::find($item['id']);
+            if ($producto) {
+                if ($producto->imagen) {
+                    Storage::disk('public')->delete($producto->imagen);
+                }
+                $producto->update(['imagen' => $this->procesarImagenProducto($imagen)]);
+            }
+        }
+
+        return $item['id'];
+    }
+
+    private function procesarImagenProducto($file): string
+    {
+        $imagen = Image::decode($file)
+            ->cover(600, 600);
+
+        $nombreArchivo = 'productos/' . Str::uuid() . '.webp';
+
+        Storage::disk('public')->put(
+            $nombreArchivo,
+            $imagen->encodeUsingFileExtension('webp', quality: 80)
+        );
+
+        return $nombreArchivo;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Cotizacion extends Model
 {
@@ -11,6 +12,7 @@ class Cotizacion extends Model
 
     protected $fillable = [
         'folio',
+        'cliente_id',
         'cliente_prefijo',
         'cliente_nombre',
         'cliente_apellidos',
@@ -81,5 +83,10 @@ class Cotizacion extends Model
             'iva'      => $iva,
             'total'    => $baseConDescuento + $iva,
         ]);
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
     }
 }

@@ -50,6 +50,10 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Catálogos')" class="grid **:data-[flux-heading]:!text-white/50">
+                    <flux:sidebar.item icon="building-office" :href="route('clientes.index')" :current="request()->routeIs('clientes.*')"
+                        class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
+                        {{ __('Clientes') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="cube" :href="route('productos.index')" :current="request()->routeIs('productos.*')"
                         class="**:!text-white hover:**:!text-[#ffc000] !text-white hover:!text-[#ffc000] hover:!bg-white/10 data-current:!bg-white/15">
                         {{ __('Productos') }}

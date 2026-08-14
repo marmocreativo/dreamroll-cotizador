@@ -23,6 +23,7 @@
     <table>
         <thead>
             <tr>
+                <th style="width: 50px;"></th>
                 <th>Producto</th>
                 <th>Cantidad</th>
                 <th>Precio unitario</th>
@@ -32,6 +33,11 @@
         <tbody>
             @foreach ($cotizacion->productos as $renglon)
             <tr>
+                <td>
+                    @if ($renglon->producto?->imagen_url)
+                        <img src="{{ $renglon->producto->imagen_url }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" />
+                    @endif
+                </td>
                 <td>{{ $renglon->producto?->nombre ?? '—' }}</td>
                 <td>{{ $renglon->cantidad }}</td>
                 <td>${{ number_format($renglon->precio_unitario, 2) }} MXN</td>

@@ -7,6 +7,7 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\PortafolioController;
+use App\Http\Controllers\ClienteController;
 
 // ── Pública ───────────────────────────────────────────
 Route::get('/', fn() => view('welcome'))->name('welcome');
@@ -45,6 +46,13 @@ Route::middleware('auth')->group(function () {
     // Autocompletado de productos para el wizard (paso 2)
     Route::get('productos/buscar', [ProductoController::class, 'buscar'])
         ->name('productos.buscar');
+
+    // Autocompletado de clientes para el wizard (paso 1)
+    Route::get('clientes/buscar', [ClienteController::class, 'buscar'])
+        ->name('clientes.buscar');
+
+    // Clientes
+    Route::resource('clientes', ClienteController::class);
 
     // Productos
     Route::resource('productos', ProductoController::class);
