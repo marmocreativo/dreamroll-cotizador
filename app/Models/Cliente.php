@@ -18,6 +18,7 @@ class Cliente extends Model
         'contacto_prefijo',
         'contacto_nombre',
         'contacto_apellidos',
+        'contacto_puesto',
         'contacto_telefono',
         'contacto_email',
         'activo',

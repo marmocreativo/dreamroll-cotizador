@@ -16,10 +16,12 @@ class CotizacionMail extends Mailable
     use Queueable, SerializesModels;
 
     public Cotizacion $cotizacion;
+    public ?\App\Models\User $usuario;
 
-    public function __construct(Cotizacion $cotizacion)
+    public function __construct(Cotizacion $cotizacion, ?\App\Models\User $usuario = null)
     {
         $this->cotizacion = $cotizacion->loadMissing('productos.producto');
+        $this->usuario = $usuario;
     }
 
     public function envelope(): Envelope
@@ -39,7 +41,10 @@ class CotizacionMail extends Mailable
 
     public function attachments(): array
     {
-        $pdf = Pdf::loadView('pdf.cotizacion', ['cotizacion' => $this->cotizacion]);
+        $pdf = Pdf::loadView('pdf.cotizacion', [
+            'cotizacion' => $this->cotizacion,
+            'usuario'    => $this->usuario,
+        ]);
 
         return [
             Attachment::fromData(

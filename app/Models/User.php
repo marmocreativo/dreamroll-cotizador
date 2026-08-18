@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'prefijo', 'apellidos', 'puesto', 'imagen_firma', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -42,5 +42,17 @@ class User extends Authenticatable
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    public function getNombreCompletoAttribute(): string
+    {
+        return collect([$this->prefijo, $this->name, $this->apellidos])
+            ->filter()
+            ->implode(' ');
+    }
+
+    public function getImagenFirmaUrlAttribute(): ?string
+    {
+        return $this->imagen_firma ? asset('storage/' . $this->imagen_firma) : null;
     }
 }

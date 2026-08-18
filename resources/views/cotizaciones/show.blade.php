@@ -48,6 +48,10 @@
                             <p class="text-gray-900">{{ $cotizacion->cliente_nombre_completo }}</p>
                         </div>
                         <div>
+                            <p class="text-xs text-gray-400">Puesto</p>
+                            <p class="text-gray-900">{{ $cotizacion->cliente_puesto ?: '—' }}</p>
+                        </div>
+                        <div>
                             <p class="text-xs text-gray-400">Empresa</p>
                             <p class="text-gray-900">{{ $cotizacion->cliente_empresa ?: '—' }}</p>
                         </div>
@@ -76,6 +80,8 @@
                                     <th class="px-3 py-2 w-14"></th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Cant.</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Costo</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Aum. %</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Precio unit.</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Subtotal</th>
                                 </tr>
@@ -100,6 +106,8 @@
                                             {{ $item->producto->nombre ?? 'Producto eliminado' }}
                                         </td>
                                         <td class="px-3 py-2 text-gray-600">{{ $item->cantidad }}</td>
+                                        <td class="px-3 py-2 text-gray-600">{{ $item->costo !== null ? '$'.number_format($item->costo, 2) : '—' }}</td>
+                                        <td class="px-3 py-2 text-gray-600">{{ $item->aumento_porcentaje !== null ? number_format($item->aumento_porcentaje, 2).'%' : '—' }}</td>
                                         <td class="px-3 py-2 text-gray-600">${{ number_format($item->precio_unitario, 2) }}</td>
                                         <td class="px-3 py-2 font-medium text-gray-900">${{ number_format($item->subtotal, 2) }}</td>
                                     </tr>

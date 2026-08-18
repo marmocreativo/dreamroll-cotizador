@@ -3,55 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #333; margin: 0; padding: 24px; }
-        .header { margin-bottom: 24px;}
-        .fecha { text-align: right; color: #666; font-size: 11px; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #333; margin: 0; padding: 14px; }
+        .header { margin-bottom: 24px; }
         .header-logo { margin-bottom: 4px; }
-        .destinatario { margin-bottom: 20px; }
-        .destinatario strong { display: block; font-size: 13px; color: #1b2d4f; text-transform: uppercase; }
+        .pleca { width: 100%; margin-bottom: 20px; }
+        .datos-tabla { width: 100%; margin-bottom: 24px; }
+        .datos-tabla td { vertical-align: top; padding: 0; }
+        .col-cliente { width: 78%; }
+        .col-fecha { width: 22%; text-align: right; }
+        .col-fecha .titulo { font-size: 9px; }
+        .col-fecha .dato { font-size: 10px; }
+        .col-cliente strong.titulo,
+        .col-fecha strong.titulo {
+            display: block;
+            font-size: 11px;
+            color: #f5a623;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .col-cliente .empresa { font-size: 14px; font-weight: bold; color: #1b2d4f; }
+        .col-cliente .contacto { font-size: 12px; color: #333; }
+        .col-cliente .puesto { font-size: 11px; color: #666; }
+        .col-fecha .dato { font-size: 12px; color: #333; }
         .intro { margin-bottom: 20px; color: #444; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        thead tr { background-color: #1b2d4f; color: #fff; }
-        thead th { padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
-        tbody tr { border-bottom: 1px solid #e5e7eb; }
-        tbody td { padding: 8px 10px; }
+        table.productos { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        table.productos thead tr { background-color: #1b2d4f; color: #fff; }
+        table.productos thead th { padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
+        table.productos tbody tr { border-bottom: 1px solid #e5e7eb; }
+        table.productos tbody td { padding: 8px 10px; }
         .text-right { text-align: right; }
         .totales { width: 260px; margin-left: auto; margin-top: 8px; }
         .totales td { padding: 4px 8px; font-size: 12px; }
         .totales .total-row { font-weight: bold; font-size: 13px; border-top: 2px solid #f5a623; color: #1b2d4f; }
-        .notas { margin-top: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #f5a623; font-size: 11px; }
+        .condiciones { margin-top: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #f5a623; font-size: 11px; }
         .footer { margin-top: 40px; font-size: 11px; color: #888; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+        .firma { margin-top: 30px; }
+        .firma img { height: 60px; width: auto; display: block; margin-bottom: 4px; }
+        .firma .nombre { font-size: 12px; font-weight: bold; color: #1b2d4f; }
+        .firma .puesto { font-size: 11px; color: #666; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div>
-            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo_principal.png'))) }}" 
-                style="height: 60px; width: auto;" />
-        </div>
+    <div class="pleca">
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('pleca_pdf.png'))) }}"
+            style="width: 100%; height: auto; display: block;" />
     </div>
 
-    <div class="destinatario">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <strong>{{ $cotizacion->cliente_nombre_completo }}</strong>
-            <span style="font-size: 11px; color: #666;">Ciudad de México a {{ now()->isoFormat('D [de] MMMM [de] YYYY') }}</span>
-        </div>
-        {{ $cotizacion->cliente_empresa ?? '' }}<br>
-        {{ $cotizacion->cliente_telefono ?? '' }}
-        @if($cotizacion->cliente_telefono && $cotizacion->cliente_email) &middot; @endif
-        {{ $cotizacion->cliente_email ?? '' }}
-    </div>
+    <table class="datos-tabla">
+        <tr>
+            <td class="col-cliente">
+                <strong class="titulo">Cliente</strong>
+                @if ($cotizacion->cliente_empresa)
+                    <div class="empresa">{{ $cotizacion->cliente_empresa }}</div>
+                @endif
+                <div class="contacto">{{ $cotizacion->cliente_nombre_completo }}</div>
+                @if ($cotizacion->cliente_puesto)
+                    <div class="puesto">{{ $cotizacion->cliente_puesto }}</div>
+                @endif
+            </td>
+            <td class="col-fecha">
+                <strong class="titulo">Fecha</strong>
+                <div class="dato">{{ now()->isoFormat('D [de] MMMM [de] YYYY') }}</div>
+                @if ($cotizacion->valida_hasta)
+                    <strong class="titulo" style="margin-top:8px;">Vigencia</strong>
+                    <div class="dato">Válida hasta el {{ $cotizacion->valida_hasta->format('d/m/Y') }}</div>
+                @endif
+            </td>
+        </tr>
+    </table>
 
     <p class="intro">
-        De acuerdo con su amable solicitud hacemos llegar nuestra propuesta para los productos/servicios requeridos.
+        En atención a su amable solicitud, presentamos nuestra propuesta económica, queda de la siguiente manera:
     </p>
 
-    <table>
+    <table class="productos">
         <thead>
             <tr>
                 <th style="width: 50px;"></th>
-                <th>Producto/Servicio</th>
+                <th>Descripción</th>
                 <th class="text-right">Cantidad</th>
                 <th class="text-right">Precio unitario</th>
                 <th class="text-right">Subtotal</th>
@@ -105,30 +136,37 @@
         </tr>
     </table>
 
-    @if ($cotizacion->tiempo_entrega || $cotizacion->condiciones || $cotizacion->notas)
-    <div class="notas">
+    @if ($cotizacion->tiempo_entrega || $cotizacion->condiciones)
+    <div class="condiciones">
+        <strong>Bajo las siguientes condiciones:</strong><br>
         @if ($cotizacion->tiempo_entrega)
-            <strong>Tiempo de entrega:</strong> {{ $cotizacion->tiempo_entrega }}<br>
+            Tiempo de entrega: {{ $cotizacion->tiempo_entrega }}<br>
         @endif
         @if ($cotizacion->condiciones)
-            <strong>Condiciones:</strong><br>
             {{ $cotizacion->condiciones }}<br>
         @endif
         El importe final ya incluye IVA.
     </div>
     @endif
 
-    @if ($cotizacion->valida_hasta)
-    <p style="font-size:11px; color:#666; margin-top:12px;">
-        Cotización válida hasta el {{ $cotizacion->valida_hasta->format('d/m/Y') }}.
-    </p>
-    @endif
-
     <div class="footer">
         Agradecemos su interés en nuestra propuesta. Si tiene alguna pregunta o necesita más información,
         no dude en ponerse en contacto con nosotros.<br><br>
-        Cordialmente<br>
-        <strong>Dream Roll</strong>
+        Cordialmente
+
+        @if ($usuario ?? null)
+            <div class="firma">
+                @if ($usuario->imagen_firma_url)
+                    <img src="data:image/png;base64,{{ base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($usuario->imagen_firma)) }}" />
+                @endif
+                <div class="nombre">{{ $usuario->nombre_completo }}</div>
+                @if ($usuario->puesto)
+                    <div class="puesto">{{ $usuario->puesto }}</div>
+                @endif
+            </div>
+        @else
+            <br><strong>Dream Roll</strong>
+        @endif
     </div>
 
 </body>

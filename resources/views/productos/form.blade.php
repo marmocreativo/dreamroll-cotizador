@@ -27,7 +27,17 @@
         @endif
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 space-y-4"
-             x-data="{ preview: {{ isset($producto) && $producto->imagen_url ? "'".$producto->imagen_url."'" : 'null' }} }">
+             x-data="{
+                preview: {{ isset($producto) && $producto->imagen_url ? "'".$producto->imagen_url."'" : 'null' }},
+                costo: {{ old('costo', $producto->costo ?? 0) ?: 0 }},
+                aumento: {{ old('aumento_porcentaje', $producto->aumento_porcentaje ?? 0) ?: 0 }},
+                precio: {{ old('precio_unitario', $producto->precio_unitario ?? 0) ?: 0 }},
+                calcularPrecio() {
+                    const costo = parseFloat(this.costo) || 0;
+                    const aumento = parseFloat(this.aumento) || 0;
+                    this.precio = (costo * (1 + aumento / 100)).toFixed(2);
+                }
+             }">
 
             {{-- Imagen --}}
             <div>
@@ -75,6 +85,38 @@
                 @enderror
             </div>
 
+            {{-- Calculadora de precio --}}
+            <div class="rounded-lg border border-dashed border-gray-200 p-4 space-y-4">
+                <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Calculadora de precio</p>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Costo</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                            <input type="number" name="costo" step="0.01" min="0"
+                                   x-model="costo" @input="calcularPrecio"
+                                   class="w-full rounded-lg border border-gray-200 pl-7 pr-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                        </div>
+                        @error('costo')
+                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Aumento (%)</label>
+                        <div class="relative">
+                            <input type="number" name="aumento_porcentaje" step="0.01" min="0"
+                                   x-model="aumento" @input="calcularPrecio"
+                                   class="w-full rounded-lg border border-gray-200 pr-8 pl-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                        </div>
+                        @error('aumento_porcentaje')
+                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">
                     Precio unitario <span class="text-red-500">*</span>
@@ -82,9 +124,10 @@
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
                     <input type="number" name="precio_unitario" step="0.01" min="0"
-                           value="{{ old('precio_unitario', $producto->precio_unitario ?? '') }}"
+                           x-model="precio"
                            class="w-full rounded-lg border pl-7 pr-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary {{ $errors->has('precio_unitario') ? 'border-red-400' : 'border-gray-200' }}" />
                 </div>
+                <p class="mt-1 text-xs text-gray-400">Se calcula automáticamente con costo + aumento, pero puedes editarlo manualmente.</p>
                 @error('precio_unitario')
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror

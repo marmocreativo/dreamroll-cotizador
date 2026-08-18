@@ -107,6 +107,15 @@
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Puesto</label>
+                        <input type="text" name="contacto_puesto"
+                               value="{{ old('contacto_puesto', $cliente->contacto_puesto ?? '') }}"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
                         <input type="text" name="contacto_telefono"
                                value="{{ old('contacto_telefono', $cliente->contacto_telefono ?? '') }}"

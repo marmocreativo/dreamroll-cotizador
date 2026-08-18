@@ -16,6 +16,7 @@ class Cotizacion extends Model
         'cliente_prefijo',
         'cliente_nombre',
         'cliente_apellidos',
+        'cliente_puesto',
         'cliente_empresa',
         'cliente_telefono',
         'cliente_email',

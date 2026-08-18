@@ -34,11 +34,13 @@ class ProductoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre'          => 'required|string|max:150',
-            'descripcion'     => 'nullable|string|max:255',
-            'precio_unitario' => 'required|numeric|min:0',
-            'imagen'          => 'nullable|image|max:5120',
-            'activo'          => 'boolean',
+            'nombre'              => 'required|string|max:150',
+            'descripcion'         => 'nullable|string|max:255',
+            'costo'               => 'nullable|numeric|min:0',
+            'aumento_porcentaje'  => 'nullable|numeric|min:0',
+            'precio_unitario'     => 'required|numeric|min:0',
+            'imagen'              => 'nullable|image|max:5120',
+            'activo'              => 'boolean',
         ]);
 
         if ($request->hasFile('imagen')) {
@@ -59,11 +61,13 @@ class ProductoController extends Controller
     public function update(Request $request, Producto $producto)
     {
         $validated = $request->validate([
-            'nombre'          => 'required|string|max:150',
-            'descripcion'     => 'nullable|string|max:255',
-            'precio_unitario' => 'required|numeric|min:0',
-            'imagen'          => 'nullable|image|max:5120',
-            'activo'          => 'boolean',
+            'nombre'              => 'required|string|max:150',
+            'descripcion'         => 'nullable|string|max:255',
+            'costo'               => 'nullable|numeric|min:0',
+            'aumento_porcentaje'  => 'nullable|numeric|min:0',
+            'precio_unitario'     => 'required|numeric|min:0',
+            'imagen'              => 'nullable|image|max:5120',
+            'activo'              => 'boolean',
         ]);
 
         if ($request->hasFile('imagen')) {
@@ -102,14 +106,16 @@ class ProductoController extends Controller
             ->where('nombre', 'like', "%{$termino}%")
             ->orderBy('nombre')
             ->limit(10)
-            ->get(['id', 'nombre', 'precio_unitario', 'imagen']);
+            ->get(['id', 'nombre', 'costo', 'aumento_porcentaje', 'precio_unitario', 'imagen']);
 
         return response()->json(
             $productos->map(fn($p) => [
-                'id'              => $p->id,
-                'nombre'          => $p->nombre,
-                'precio_unitario' => $p->precio_unitario,
-                'imagen_url'      => $p->imagen_url,
+                'id'                 => $p->id,
+                'nombre'             => $p->nombre,
+                'costo'              => $p->costo,
+                'aumento_porcentaje' => $p->aumento_porcentaje,
+                'precio_unitario'    => $p->precio_unitario,
+                'imagen_url'         => $p->imagen_url,
             ])
         );
     }

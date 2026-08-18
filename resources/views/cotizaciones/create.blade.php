@@ -60,32 +60,18 @@
 
                 <input type="hidden" name="cliente_id" :value="cliente.id ?? ''">
 
-                {{-- Buscador de cliente existente (oculto si ya hay uno elegido o si es "nuevo") --}}
-                <div class="relative" x-show="!cliente.id && !clienteNuevoModo" x-cloak>
+                {{-- Buscador de cliente: escribe y presiona Enter o el botón para abrir el diálogo de resultados --}}
+                <div x-show="!cliente.id && !clienteNuevoModo" x-cloak>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Buscar cliente</label>
-                    <input type="text" x-model="busquedaCliente" @input.debounce.300ms="buscarClientes"
-                           @focus="mostrarResultadosCliente = true"
-                           @keydown.escape="mostrarResultadosCliente = false"
-                           placeholder="Busca por empresa, nombre o RFC..."
-                           autocomplete="off"
-                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-
-                    <div x-show="mostrarResultadosCliente && (resultadosClientes.length > 0 || busquedaCliente.length > 1)"
-                         x-cloak @click.outside="mostrarResultadosCliente = false"
-                         class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
-                        <template x-for="c in resultadosClientes" :key="c.id">
-                            <button type="button" @click="seleccionarCliente(c)"
-                                    class="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-gray-50 transition-colors">
-                                <span class="text-sm text-gray-900" x-text="c.empresa"></span>
-                                <span class="text-xs text-gray-400" x-text="c.contacto_nombre + ' ' + (c.contacto_apellidos || '') + (c.rfc ? ' · ' + c.rfc : '')"></span>
-                            </button>
-                        </template>
-                        <button type="button" x-show="busquedaCliente.length > 1" @click="activarClienteNuevo()"
-                                class="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-secondary hover:bg-gray-50 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            Agregar nuevo cliente
+                    <div class="flex gap-2">
+                        <input type="text" x-model="busquedaCliente"
+                               @keydown.enter.prevent="buscarClientes()"
+                               placeholder="Busca por empresa, nombre o RFC y presiona Enter o Buscar..."
+                               autocomplete="off"
+                               class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                        <button type="button" @click="buscarClientes()"
+                                class="shrink-0 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
+                            Buscar
                         </button>
                     </div>
                 </div>
@@ -174,6 +160,14 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Puesto</label>
+                        <input type="text" name="cliente_puesto" x-model="cliente.puesto"
+                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div x-show="!clienteNuevoModo">
                         <label class="mb-1 block text-sm font-medium text-gray-700">Empresa</label>
                         <input type="text" name="cliente_empresa" x-model="cliente.empresa"
@@ -205,35 +199,18 @@
             <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
                 <p class="text-sm font-medium text-gray-700">Productos/Servicios</p>
 
-                {{-- Buscador con autocompletado --}}
-                <div class="relative">
+                {{-- Buscador: escribe y presiona Enter o el botón para abrir el diálogo de resultados --}}
+                <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto o servicio</label>
-                    <input type="text" x-model="busqueda" @input.debounce.300ms="buscarProductos"
-                           @focus="mostrarResultados = true"
-                           @keydown.escape="mostrarResultados = false"
-                           placeholder="Escribe el nombre del producto..."
-                           autocomplete="off"
-                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-
-                    <div x-show="mostrarResultados && (resultados.length > 0 || busqueda.length > 1)"
-                         x-cloak @click.outside="mostrarResultados = false"
-                         class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-y-auto">
-                        <template x-for="producto in resultados" :key="producto.id">
-                            <button type="button" @click="agregarProducto(producto)"
-                                    class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors">
-                                <img :src="producto.imagen_url" x-show="producto.imagen_url" class="size-8 rounded object-cover border border-gray-200">
-                                <div class="flex-1">
-                                    <p class="text-sm text-gray-900" x-text="producto.nombre"></p>
-                                    <p class="text-xs text-gray-400">$<span x-text="Number(producto.precio_unitario).toFixed(2)"></span></p>
-                                </div>
-                            </button>
-                        </template>
-                        <button type="button" x-show="busqueda.length > 1" @click="agregarProductoNuevo()"
-                                class="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-secondary hover:bg-gray-50 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            Agregar "<span x-text="busqueda"></span>" como nuevo
+                    <div class="flex gap-2">
+                        <input type="text" x-model="busqueda"
+                               @keydown.enter.prevent="buscarProductos()"
+                               placeholder="Escribe el nombre y presiona Enter o Buscar..."
+                               autocomplete="off"
+                               class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                        <button type="button" @click="buscarProductos()"
+                                class="shrink-0 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
+                            Buscar
                         </button>
                     </div>
                 </div>
@@ -246,7 +223,9 @@
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-14">Img</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Cantidad</th>
-                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Precio unit.</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Costo</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-20">Aum. %</th>
+                                <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-28">Precio unit.</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-32">Subtotal</th>
                                 <th class="px-3 py-2 w-10"></th>
                             </tr>
@@ -255,7 +234,8 @@
                             <template x-for="(item, index) in items" :key="item.uid">
                                 <tr>
                                     <td class="px-3 py-2">
-                                        <label class="group relative block size-10 cursor-pointer overflow-hidden rounded border border-gray-200 bg-gray-50">
+                                        <div @click="abrirDialogFoto(index)"
+                                             class="group relative block size-10 cursor-pointer overflow-hidden rounded border border-gray-200 bg-gray-50">
                                             <img :src="item.imagenPreview || item.imagen_url" x-show="item.imagenPreview || item.imagen_url"
                                                  class="size-full object-cover" />
                                             <span x-show="!item.imagenPreview && !item.imagen_url"
@@ -264,10 +244,12 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 15h18M2.25 4.5h19.5M4.5 4.5v15h15v-15" />
                                                 </svg>
                                             </span>
-                                            <input type="file" accept="image/*" class="hidden"
-                                                   :name="'productos['+index+'][imagen]'"
-                                                   @change="cambiarImagenProducto(index, $event)" />
-                                        </label>
+                                        </div>
+                                        {{-- Input real que viaja en el form; se llena vía diálogo --}}
+                                        <input type="file" accept="image/*" class="hidden"
+                                               :id="'foto-input-' + item.uid"
+                                               :name="'productos['+index+'][imagen]'"
+                                               @change="onFileSeleccionado($event, index)" />
                                     </td>
                                     <td class="px-3 py-2">
                                         <input type="text" x-model="item.nombre"
@@ -278,6 +260,18 @@
                                     <td class="px-3 py-2">
                                         <input type="number" min="1" x-model.number="item.cantidad" @input="calcularTotales"
                                                :name="'productos['+index+'][cantidad]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="0" step="0.01" x-model.number="item.costo"
+                                               @input="calcularPrecioItem(index)"
+                                               :name="'productos['+index+'][costo]'"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" min="0" step="0.01" x-model.number="item.aumento_porcentaje"
+                                               @input="calcularPrecioItem(index)"
+                                               :name="'productos['+index+'][aumento_porcentaje]'"
                                                class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
                                     </td>
                                     <td class="px-3 py-2">
@@ -298,7 +292,7 @@
                                 </tr>
                             </template>
                             <tr x-show="items.length === 0">
-                                <td colspan="6" class="px-3 py-8 text-center text-gray-400 text-sm">
+                                <td colspan="8" class="px-3 py-8 text-center text-gray-400 text-sm">
                                     Aún no has agregado productos.
                                 </td>
                             </tr>
@@ -399,6 +393,162 @@
                 </button>
             </div>
         </form>
+
+        {{-- ── DIÁLOGO: Resultados de búsqueda de cliente ─────────── --}}
+        <div x-show="mostrarDialogBusquedaCliente" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+             @keydown.escape.window="cerrarDialogBusquedaCliente()">
+            <div @click.outside="cerrarDialogBusquedaCliente()"
+                 class="w-full max-w-md rounded-xl bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <p class="text-sm font-semibold text-gray-900">
+                        Resultados para "<span x-text="terminoBuscadoCliente"></span>"
+                    </p>
+                    <button type="button" @click="cerrarDialogBusquedaCliente()" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="max-h-80 overflow-y-auto p-2">
+                    <template x-if="resultadosBusquedaCliente.length === 0">
+                        <div class="px-3 py-6 text-center">
+                            <p class="text-sm text-gray-500">No se encontraron clientes con ese nombre.</p>
+                        </div>
+                    </template>
+
+                    <template x-for="c in resultadosBusquedaCliente" :key="c.id">
+                        <button type="button" @click="seleccionarClienteBusqueda(c)"
+                                class="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                            <span class="text-sm text-gray-900" x-text="c.empresa"></span>
+                            <span class="text-xs text-gray-400" x-text="c.contacto_nombre + ' ' + (c.contacto_apellidos || '') + (c.rfc ? ' · ' + c.rfc : '')"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="border-t border-gray-100 p-4">
+                    <button type="button" @click="crearClienteNuevoDesdeBusqueda()"
+                            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span x-show="resultadosBusquedaCliente.length === 0">
+                            Agregar "<span x-text="terminoBuscadoCliente"></span>" como nuevo cliente
+                        </span>
+                        <span x-show="resultadosBusquedaCliente.length > 0">
+                            Crear cliente nuevo "<span x-text="terminoBuscadoCliente"></span>"
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── DIÁLOGO: Resultados de búsqueda de producto ────────── --}}
+        <div x-show="mostrarDialogBusqueda" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+             @keydown.escape.window="cerrarDialogBusqueda()">
+            <div @click.outside="cerrarDialogBusqueda()"
+                 class="w-full max-w-md rounded-xl bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <p class="text-sm font-semibold text-gray-900">
+                        Resultados para "<span x-text="terminoBuscado"></span>"
+                    </p>
+                    <button type="button" @click="cerrarDialogBusqueda()" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="max-h-80 overflow-y-auto p-2">
+                    <template x-if="resultadosBusqueda.length === 0">
+                        <div class="px-3 py-6 text-center">
+                            <p class="text-sm text-gray-500">No se encontraron productos con ese nombre.</p>
+                        </div>
+                    </template>
+
+                    <template x-for="producto in resultadosBusqueda" :key="producto.id">
+                        <button type="button" @click="seleccionarProductoBusqueda(producto)"
+                                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                            <img :src="producto.imagen_url" x-show="producto.imagen_url" class="size-9 rounded object-cover border border-gray-200">
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-900" x-text="producto.nombre"></p>
+                                <p class="text-xs text-gray-400">$<span x-text="Number(producto.precio_unitario).toFixed(2)"></span></p>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="border-t border-gray-100 p-4">
+                    <button type="button" @click="crearProductoNuevoDesdeBusqueda()"
+                            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span x-show="resultadosBusqueda.length === 0">
+                            Agregar "<span x-text="terminoBuscado"></span>" como nuevo producto
+                        </span>
+                        <span x-show="resultadosBusqueda.length > 0">
+                            Crear variación nueva "<span x-text="terminoBuscado"></span>"
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── DIÁLOGO: Foto del producto ──────────────────────────── --}}
+        <div x-show="mostrarDialogFoto" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+             @keydown.escape.window="cerrarDialogFoto()"
+             @paste.window="pegarDesdeEvento($event)">
+            <div @click.outside="cerrarDialogFoto()"
+                 class="w-full max-w-sm rounded-xl bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <p class="text-sm font-semibold text-gray-900">Imagen del producto</p>
+                    <button type="button" @click="cerrarDialogFoto()" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4 p-5">
+                    {{-- Zona de drag & drop --}}
+                    <div @dragover.prevent="draggingFoto = true"
+                         @dragleave.prevent="draggingFoto = false"
+                         @drop.prevent="onDropFoto($event)"
+                         :class="draggingFoto ? 'border-secondary bg-gray-50' : 'border-gray-200'"
+                         class="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        <p class="text-sm text-gray-500">Arrastra y suelta una imagen aquí</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" @click="abrirExplorador()"
+                                class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0v6a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25v-6m-19.5 0h19.5" />
+                            </svg>
+                            Explorador
+                        </button>
+                        <button type="button" @click="pegarDesdePortapapeles()"
+                                class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3a2.25 2.25 0 0 0-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75h-6a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                            </svg>
+                            Pegar imagen
+                        </button>
+                    </div>
+                    <p class="text-center text-xs text-gray-400">
+                        También puedes presionar <kbd class="rounded border border-gray-200 px-1">Ctrl</kbd>+<kbd class="rounded border border-gray-200 px-1">V</kbd> con este diálogo abierto.
+                    </p>
+                    <p x-show="errorFoto" x-text="errorFoto" class="text-center text-xs text-red-500"></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -413,6 +563,7 @@
                     prefijo: '{{ old('cliente_prefijo') }}',
                     nombre: '{{ old('cliente_nombre') }}',
                     apellidos: '{{ old('cliente_apellidos') }}',
+                    puesto: '{{ old('cliente_puesto') }}',
                     empresa: '{{ old('cliente_empresa') }}',
                     telefono: '{{ old('cliente_telefono') }}',
                     email: '{{ old('cliente_email') }}',
@@ -422,20 +573,32 @@
                     usoCfdi: '',
                 },
                 clienteNuevoModo: false,
+
+                // Búsqueda de clientes (paso 1)
                 busquedaCliente: '',
-                resultadosClientes: [],
-                mostrarResultadosCliente: false,
+                terminoBuscadoCliente: '',
+                resultadosBusquedaCliente: [],
+                mostrarDialogBusquedaCliente: false,
 
                 entrega: {
                     tiempo: '{{ old('tiempo_entrega') }}',
                     validaHasta: '{{ old('valida_hasta') }}',
-                    condiciones: '{{ old('condiciones') }}',
+                    condiciones: {!! json_encode(old('condiciones', "* Forma de pago 50% anticipo 50% contra entrega.\n* Esta cotización tiene una vigencia de 15 días a partir de la fecha de elaboración.\n* Tiempo de entrega: a definir una vez entregada la orden de compra y/o autorización.")) !!},
                     notas: '{{ old('notas') }}',
                 },
 
+                // Búsqueda de productos (paso 2)
                 busqueda: '',
-                resultados: [],
-                mostrarResultados: false,
+                terminoBuscado: '',
+                resultadosBusqueda: [],
+                mostrarDialogBusqueda: false,
+
+                // Diálogo de imagen
+                mostrarDialogFoto: false,
+                fotoEditIndex: null,
+                draggingFoto: false,
+                errorFoto: '',
+
                 items: [],
                 siguienteUid: 1,
 
@@ -444,17 +607,35 @@
                 iva: 0,
                 total: 0,
 
+                // ── Búsqueda de clientes vía diálogo ─────────────────
                 async buscarClientes() {
-                    if (this.busquedaCliente.length < 2) {
-                        this.resultadosClientes = [];
-                        return;
-                    }
+                    const termino = this.busquedaCliente.trim();
+                    if (termino.length < 2) return;
+
+                    this.terminoBuscadoCliente = termino;
+
                     try {
-                        const res = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(this.busquedaCliente)}`);
-                        this.resultadosClientes = await res.json();
+                        const res = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(termino)}`);
+                        this.resultadosBusquedaCliente = await res.json();
                     } catch (e) {
-                        this.resultadosClientes = [];
+                        this.resultadosBusquedaCliente = [];
                     }
+
+                    this.mostrarDialogBusquedaCliente = true;
+                },
+
+                cerrarDialogBusquedaCliente() {
+                    this.mostrarDialogBusquedaCliente = false;
+                },
+
+                seleccionarClienteBusqueda(c) {
+                    this.seleccionarCliente(c);
+                    this.cerrarDialogBusquedaCliente();
+                },
+
+                crearClienteNuevoDesdeBusqueda() {
+                    this.activarClienteNuevo(this.terminoBuscadoCliente);
+                    this.cerrarDialogBusquedaCliente();
                 },
 
                 seleccionarCliente(c) {
@@ -463,6 +644,7 @@
                         prefijo: c.contacto_prefijo || '',
                         nombre: c.contacto_nombre || '',
                         apellidos: c.contacto_apellidos || '',
+                        puesto: c.contacto_puesto || '',
                         empresa: c.empresa || '',
                         telefono: c.contacto_telefono || '',
                         email: c.contacto_email || '',
@@ -473,38 +655,54 @@
                     };
                     this.clienteNuevoModo = false;
                     this.busquedaCliente = '';
-                    this.resultadosClientes = [];
-                    this.mostrarResultadosCliente = false;
                 },
 
-                activarClienteNuevo() {
+                activarClienteNuevo(nombreSugerido = '') {
                     this.clienteNuevoModo = true;
                     this.cliente.id = null;
-                    this.cliente.empresa = this.cliente.empresa || this.busquedaCliente;
+                    this.cliente.empresa = this.cliente.empresa || nombreSugerido || this.busquedaCliente;
                     this.busquedaCliente = '';
-                    this.resultadosClientes = [];
-                    this.mostrarResultadosCliente = false;
                 },
 
                 quitarClienteSeleccionado() {
                     this.cliente = {
-                        id: null, prefijo: '', nombre: '', apellidos: '', empresa: '',
+                        id: null, prefijo: '', nombre: '', apellidos: '', puesto: '', empresa: '',
                         telefono: '', email: '', direccion: '', rfc: '', regimenFiscal: '', usoCfdi: '',
                     };
                     this.clienteNuevoModo = false;
                 },
 
+                // ── Búsqueda de productos vía diálogo ────────────────
                 async buscarProductos() {
-                    if (this.busqueda.length < 2) {
-                        this.resultados = [];
-                        return;
-                    }
+                    const termino = this.busqueda.trim();
+                    if (termino.length < 2) return;
+
+                    this.terminoBuscado = termino;
+
                     try {
-                        const res = await fetch(`{{ route('productos.buscar') }}?q=${encodeURIComponent(this.busqueda)}`);
-                        this.resultados = await res.json();
+                        const res = await fetch(`{{ route('productos.buscar') }}?q=${encodeURIComponent(termino)}`);
+                        this.resultadosBusqueda = await res.json();
                     } catch (e) {
-                        this.resultados = [];
+                        this.resultadosBusqueda = [];
                     }
+
+                    this.mostrarDialogBusqueda = true;
+                },
+
+                cerrarDialogBusqueda() {
+                    this.mostrarDialogBusqueda = false;
+                },
+
+                seleccionarProductoBusqueda(producto) {
+                    this.agregarProducto(producto);
+                    this.cerrarDialogBusqueda();
+                    this.busqueda = '';
+                },
+
+                crearProductoNuevoDesdeBusqueda() {
+                    this.agregarProductoNuevo(this.terminoBuscado);
+                    this.cerrarDialogBusqueda();
+                    this.busqueda = '';
                 },
 
                 agregarProducto(producto) {
@@ -513,36 +711,36 @@
                         id: producto.id,
                         nombre: producto.nombre,
                         cantidad: 1,
+                        costo: producto.costo ?? '',
+                        aumento_porcentaje: producto.aumento_porcentaje ?? '',
                         precio: parseFloat(producto.precio_unitario),
                         imagen_url: producto.imagen_url || null,
                         imagenPreview: null,
                     });
-                    this.busqueda = '';
-                    this.resultados = [];
-                    this.mostrarResultados = false;
                     this.calcularTotales();
                 },
 
-                agregarProductoNuevo() {
+                agregarProductoNuevo(nombre) {
                     this.items.push({
                         uid: this.siguienteUid++,
                         id: null,
-                        nombre: this.busqueda,
+                        nombre: nombre,
                         cantidad: 1,
+                        costo: '',
+                        aumento_porcentaje: '',
                         precio: 0,
                         imagen_url: null,
                         imagenPreview: null,
                     });
-                    this.busqueda = '';
-                    this.resultados = [];
-                    this.mostrarResultados = false;
                     this.calcularTotales();
                 },
 
-                cambiarImagenProducto(index, event) {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    this.items[index].imagenPreview = URL.createObjectURL(file);
+                calcularPrecioItem(index) {
+                    const item = this.items[index];
+                    const costo = parseFloat(item.costo) || 0;
+                    const aumento = parseFloat(item.aumento_porcentaje) || 0;
+                    item.precio = parseFloat((costo * (1 + aumento / 100)).toFixed(2));
+                    this.calcularTotales();
                 },
 
                 quitarProducto(index) {
@@ -555,6 +753,92 @@
                     const conDescuento = this.subtotal - (this.subtotal * ((this.descuento || 0) / 100));
                     this.iva = conDescuento * 0.16;
                     this.total = conDescuento + this.iva;
+                },
+
+                // ── Diálogo de imagen ─────────────────────────────────
+                abrirDialogFoto(index) {
+                    this.fotoEditIndex = index;
+                    this.errorFoto = '';
+                    this.draggingFoto = false;
+                    this.mostrarDialogFoto = true;
+                },
+
+                cerrarDialogFoto() {
+                    this.mostrarDialogFoto = false;
+                    this.fotoEditIndex = null;
+                    this.draggingFoto = false;
+                },
+
+                abrirExplorador() {
+                    const item = this.items[this.fotoEditIndex];
+                    if (!item) return;
+                    document.getElementById('foto-input-' + item.uid).click();
+                },
+
+                onFileSeleccionado(event, index) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    this.items[index].imagenPreview = URL.createObjectURL(file);
+                    this.cerrarDialogFoto();
+                },
+
+                onDropFoto(event) {
+                    this.draggingFoto = false;
+                    const file = event.dataTransfer.files[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                        this.errorFoto = 'El archivo debe ser una imagen.';
+                        return;
+                    }
+                    this.asignarArchivoAItem(file);
+                },
+
+                async pegarDesdePortapapeles() {
+                    this.errorFoto = '';
+                    try {
+                        const items = await navigator.clipboard.read();
+                        for (const clipboardItem of items) {
+                            const tipoImagen = clipboardItem.types.find(t => t.startsWith('image/'));
+                            if (tipoImagen) {
+                                const blob = await clipboardItem.getType(tipoImagen);
+                                const file = new File([blob], 'pegado.png', { type: tipoImagen });
+                                this.asignarArchivoAItem(file);
+                                return;
+                            }
+                        }
+                        this.errorFoto = 'No se encontró una imagen en el portapapeles.';
+                    } catch (e) {
+                        this.errorFoto = 'Tu navegador no permitió leer el portapapeles. Prueba Ctrl+V con el diálogo abierto.';
+                    }
+                },
+
+                pegarDesdeEvento(event) {
+                    if (!this.mostrarDialogFoto) return;
+                    const clipboardItems = event.clipboardData?.items;
+                    if (!clipboardItems) return;
+
+                    for (const clipboardItem of clipboardItems) {
+                        if (clipboardItem.type.startsWith('image/')) {
+                            const file = clipboardItem.getAsFile();
+                            if (file) {
+                                this.asignarArchivoAItem(file);
+                            }
+                            return;
+                        }
+                    }
+                },
+
+                asignarArchivoAItem(file) {
+                    const item = this.items[this.fotoEditIndex];
+                    if (!item) return;
+
+                    const input = document.getElementById('foto-input-' + item.uid);
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+
+                    item.imagenPreview = URL.createObjectURL(file);
+                    this.cerrarDialogFoto();
                 },
 
                 irAPaso(n) {

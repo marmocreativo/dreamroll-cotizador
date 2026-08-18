@@ -12,6 +12,8 @@ class Producto extends Model
     protected $fillable = [
         'nombre',
         'descripcion',
+        'costo',
+        'aumento_porcentaje',
         'precio_unitario',
         'imagen',
         'activo',
@@ -23,8 +25,10 @@ class Producto extends Model
     }
 
     protected $casts = [
-        'precio_unitario' => 'decimal:2',
-        'activo'          => 'boolean',
+        'costo'              => 'decimal:2',
+        'aumento_porcentaje' => 'decimal:2',
+        'precio_unitario'    => 'decimal:2',
+        'activo'             => 'boolean',
     ];
 
     public function cotizacionProductos(): HasMany

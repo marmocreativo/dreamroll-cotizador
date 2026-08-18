@@ -87,6 +87,7 @@ class ClienteController extends Controller
                 'contacto_prefijo'   => $c->contacto_prefijo,
                 'contacto_nombre'    => $c->contacto_nombre,
                 'contacto_apellidos' => $c->contacto_apellidos,
+                'contacto_puesto'    => $c->contacto_puesto,
                 'contacto_telefono'  => $c->contacto_telefono,
                 'contacto_email'     => $c->contacto_email,
             ])
@@ -104,6 +105,7 @@ class ClienteController extends Controller
             'contacto_prefijo'   => 'nullable|string|max:20',
             'contacto_nombre'    => 'required|string|max:100',
             'contacto_apellidos' => 'nullable|string|max:100',
+            'contacto_puesto'    => 'nullable|string|max:100',
             'contacto_telefono'  => 'nullable|string|max:20',
             'contacto_email'     => 'nullable|email|max:150',
             'activo'             => 'boolean',

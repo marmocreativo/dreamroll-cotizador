@@ -14,6 +14,8 @@ class CotizacionProducto extends Model
     protected $fillable = [
         'cotizacion_id',
         'producto_id',
+        'costo',
+        'aumento_porcentaje',
         'cantidad',
         'precio_unitario',
         'subtotal',
@@ -21,9 +23,11 @@ class CotizacionProducto extends Model
     ];
 
     protected $casts = [
-        'precio_unitario' => 'decimal:2',
-        'subtotal'        => 'decimal:2',
-        'cantidad'        => 'integer',
+        'costo'              => 'decimal:2',
+        'aumento_porcentaje' => 'decimal:2',
+        'precio_unitario'    => 'decimal:2',
+        'subtotal'           => 'decimal:2',
+        'cantidad'           => 'integer',
     ];
 
     protected static function booted(): void

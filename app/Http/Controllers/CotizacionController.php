@@ -49,6 +49,7 @@ class CotizacionController extends Controller
             'cliente_prefijo'    => 'nullable|string|max:20',
             'cliente_nombre'     => 'required|string|max:100',
             'cliente_apellidos'  => 'nullable|string|max:100',
+            'cliente_puesto'     => 'nullable|string|max:100',
             'cliente_empresa'    => 'nullable|string|max:150',
             'cliente_telefono'   => 'nullable|string|max:20',
             'cliente_email'      => 'nullable|email|max:150',
@@ -57,11 +58,13 @@ class CotizacionController extends Controller
             // Paso 2 — productos
             'descuento'                 => 'nullable|numeric|min:0|max:100',
             'productos'                 => 'required|array|min:1',
-            'productos.*.id'            => 'nullable|exists:productos,id',
-            'productos.*.nombre'        => 'required|string|max:150',
-            'productos.*.cantidad'      => 'required|integer|min:1',
-            'productos.*.precio'        => 'required|numeric|min:0',
-            'productos.*.imagen'        => 'nullable|image|max:5120',
+            'productos.*.id'                  => 'nullable|exists:productos,id',
+            'productos.*.nombre'              => 'required|string|max:150',
+            'productos.*.costo'               => 'nullable|numeric|min:0',
+            'productos.*.aumento_porcentaje'  => 'nullable|numeric|min:0',
+            'productos.*.cantidad'            => 'required|integer|min:1',
+            'productos.*.precio'              => 'required|numeric|min:0',
+            'productos.*.imagen'              => 'nullable|image|max:5120',
 
             // Paso 3 — entrega y condiciones
             'tiempo_entrega' => 'nullable|string|max:100',
@@ -77,6 +80,7 @@ class CotizacionController extends Controller
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
+            'cliente_puesto'    => $validated['cliente_puesto'] ?? null,
             'cliente_empresa'   => $validated['cliente_empresa'] ?? null,
             'cliente_telefono'  => $validated['cliente_telefono'] ?? null,
             'cliente_email'     => $validated['cliente_email'] ?? null,
@@ -96,9 +100,11 @@ class CotizacionController extends Controller
             $productoId = $this->resolverProductoId($item, $request->file("productos.{$index}.imagen"));
 
             $cotizacion->productos()->create([
-                'producto_id'     => $productoId,
-                'cantidad'        => $item['cantidad'],
-                'precio_unitario' => $item['precio'],
+                'producto_id'        => $productoId,
+                'costo'              => $item['costo'] ?? null,
+                'aumento_porcentaje' => $item['aumento_porcentaje'] ?? null,
+                'cantidad'           => $item['cantidad'],
+                'precio_unitario'    => $item['precio'],
             ]);
         }
 
@@ -134,6 +140,7 @@ class CotizacionController extends Controller
             'cliente_prefijo'    => 'nullable|string|max:20',
             'cliente_nombre'     => 'required|string|max:100',
             'cliente_apellidos'  => 'nullable|string|max:100',
+            'cliente_puesto'     => 'nullable|string|max:100',
             'cliente_empresa'    => 'nullable|string|max:150',
             'cliente_telefono'   => 'nullable|string|max:20',
             'cliente_email'      => 'nullable|email|max:150',
@@ -158,6 +165,7 @@ class CotizacionController extends Controller
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
+            'cliente_puesto'    => $validated['cliente_puesto'] ?? null,
             'cliente_empresa'   => $validated['cliente_empresa'] ?? null,
             'cliente_telefono'  => $validated['cliente_telefono'] ?? null,
             'cliente_email'     => $validated['cliente_email'] ?? null,
@@ -175,9 +183,11 @@ class CotizacionController extends Controller
             $productoId = $this->resolverProductoId($item, $request->file("productos.{$index}.imagen"));
 
             $cotizacion->productos()->create([
-                'producto_id'     => $productoId,
-                'cantidad'        => $item['cantidad'],
-                'precio_unitario' => $item['precio'],
+                'producto_id'        => $productoId,
+                'costo'              => $item['costo'] ?? null,
+                'aumento_porcentaje' => $item['aumento_porcentaje'] ?? null,
+                'cantidad'           => $item['cantidad'],
+                'precio_unitario'    => $item['precio'],
             ]);
         }
 
@@ -218,7 +228,7 @@ class CotizacionController extends Controller
 
         \Illuminate\Support\Facades\Mail::to($request->email)
             ->bcc('leopoldo.maciel@dream-roll.com')
-            ->send(new \App\Mail\CotizacionMail($cotizacion));
+            ->send(new \App\Mail\CotizacionMail($cotizacion, auth()->user()));
 
         $cotizacion->update(['estado' => 'enviada']);
 
@@ -254,8 +264,9 @@ class CotizacionController extends Controller
     public function descargarPdf(Cotizacion $cotizacion)
     {
         $cotizacion->load('productos.producto');
+        $usuario = auth()->user();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion', 'usuario'));
 
         return $pdf->download($cotizacion->folio . '.pdf');
     }
@@ -263,8 +274,9 @@ class CotizacionController extends Controller
     public function verPdf(Cotizacion $cotizacion)
     {
         $cotizacion->load('productos.producto');
+        $usuario = auth()->user();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion', 'usuario'));
 
         return $pdf->stream($cotizacion->folio . '.pdf');
     }
@@ -292,6 +304,7 @@ class CotizacionController extends Controller
                 'contacto_prefijo'   => $validated['cliente_prefijo'] ?? null,
                 'contacto_nombre'    => $validated['cliente_nombre'],
                 'contacto_apellidos' => $validated['cliente_apellidos'] ?? null,
+                'contacto_puesto'    => $validated['cliente_puesto'] ?? null,
                 'contacto_telefono'  => $validated['cliente_telefono'] ?? null,
                 'contacto_email'     => $validated['cliente_email'] ?? null,
                 'activo'             => true,
@@ -310,10 +323,12 @@ class CotizacionController extends Controller
     {
         if (empty($item['id'])) {
             $producto = Producto::create([
-                'nombre'          => $item['nombre'],
-                'precio_unitario' => $item['precio'],
-                'activo'          => true,
-                'imagen'          => $imagen ? $this->procesarImagenProducto($imagen) : null,
+                'nombre'              => $item['nombre'],
+                'costo'               => $item['costo'] ?? null,
+                'aumento_porcentaje'  => $item['aumento_porcentaje'] ?? null,
+                'precio_unitario'     => $item['precio'],
+                'activo'              => true,
+                'imagen'              => $imagen ? $this->procesarImagenProducto($imagen) : null,
             ]);
 
             return $producto->id;
