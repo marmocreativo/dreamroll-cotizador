@@ -119,12 +119,24 @@
                     <div class="mt-4 flex justify-end">
                         <div class="w-full max-w-xs space-y-2 text-sm">
                             <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Subtotal</span>
+                                <span class="text-gray-500">Importe productos</span>
                                 <span class="text-gray-900">${{ number_format($cotizacion->subtotal, 2) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Fee de agencia ({{ number_format($cotizacion->fee_porcentaje, 2) }}%)</span>
+                                <span class="text-gray-900">${{ number_format($cotizacion->fee_agencia, 2) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Subtotal</span>
+                                <span class="text-gray-900">${{ number_format($cotizacion->subtotal + $cotizacion->fee_agencia, 2) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
                                 <span class="text-gray-500">Descuento ({{ $cotizacion->descuento }}%)</span>
-                                <span class="text-gray-900">-${{ number_format($cotizacion->subtotal * $cotizacion->descuento / 100, 2) }}</span>
+                                <span class="text-gray-900">-${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * $cotizacion->descuento / 100, 2) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Importe con descuento</span>
+                                <span class="text-gray-900">${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) - (($cotizacion->subtotal + $cotizacion->fee_agencia) * $cotizacion->descuento / 100), 2) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-500">IVA (16%)</span>

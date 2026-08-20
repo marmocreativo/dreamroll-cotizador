@@ -13,7 +13,7 @@
         </div>
     </div>
 
-    <div x-data="cotizacionWizard()" class="max-w-4xl">
+    <div x-data="cotizacionWizard()" x-init="init()" class="max-w-4xl">
 
         {{-- Stepper --}}
         <div class="mb-8 flex items-center">
@@ -309,6 +309,12 @@
                             <span class="font-medium text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
                         </div>
                         <div class="flex items-center justify-between text-sm">
+                            <label class="text-gray-500">Fee de agencia (%)</label>
+                            <input type="number" name="fee_porcentaje" min="0" max="100" step="0.01"
+                                   x-model.number="feePorcentaje" @input="calcularTotales"
+                                   class="w-20 rounded border border-gray-200 px-2 py-1 text-right text-sm text-gray-900" />
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
                             <label class="text-gray-500">Descuento (%)</label>
                             <input type="number" name="descuento" min="0" max="100" step="0.01"
                                    x-model.number="descuento" @input="calcularTotales"
@@ -515,6 +521,11 @@
                 </div>
 
                 <div class="space-y-4 p-5">
+                    {{-- Zona invisible donde el navegador procesa el pegado nativo (convierte EMF/WMF de Word a imagen real) --}}
+                    <div x-ref="pasteZone" contenteditable="true" tabindex="-1"
+                         style="position:fixed; top:-9999px; left:-9999px; width:1px; height:1px; overflow:hidden;"
+                         aria-hidden="true"></div>
+
                     {{-- Zona de drag & drop --}}
                     <div @dragover.prevent="draggingFoto = true"
                          @dragleave.prevent="draggingFoto = false"
@@ -544,7 +555,7 @@
                         </button>
                     </div>
                     <p class="text-center text-xs text-gray-400">
-                        También puedes presionar <kbd class="rounded border border-gray-200 px-1">Ctrl</kbd>+<kbd class="rounded border border-gray-200 px-1">V</kbd> con este diálogo abierto.
+                        Puedes copiar la imagen desde Word y presionar <kbd class="rounded border border-gray-200 px-1">Ctrl</kbd>+<kbd class="rounded border border-gray-200 px-1">V</kbd> con este diálogo abierto.
                     </p>
                     <p x-show="errorFoto" x-text="errorFoto" class="text-center text-xs text-red-500"></p>
                 </div>
@@ -627,13 +638,41 @@
                 items: @json($itemsData),
                 siguienteUid: {{ $siguienteUidValor }},
 
+                feePorcentaje: 10,
                 descuento: {{ $cotizacion->descuento }},
                 subtotal: 0,
                 iva: 0,
                 total: 0,
 
                 init() {
+                    // Limpia texto pegado desde Word en cualquier input/textarea del wizard
+                    this.$el.addEventListener('paste', (e) => {
+                        const el = e.target;
+                        if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) return;
+                        if (el.type === 'file') return;
+
+                        setTimeout(() => {
+                            const limpio = this.limpiarTextoWord(el.value);
+                            if (limpio !== el.value) {
+                                el.value = limpio;
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }, 0);
+                    });
+
                     this.calcularTotales();
+                },
+
+                limpiarTextoWord(texto) {
+                    if (!texto) return texto;
+                    return texto
+                        .replace(/[\u2018\u2019]/g, "'")   // comillas simples tipográficas
+                        .replace(/[\u201C\u201D]/g, '"')   // comillas dobles tipográficas
+                        .replace(/[\u2013\u2014]/g, '-')   // guiones en/em dash
+                        .replace(/\u2026/g, '...')          // puntos suspensivos
+                        .replace(/[\u00A0\u200B\uFEFF]/g, ' ') // espacios no separables e invisibles
+                        .replace(/\r\n/g, '\n')
+                        .trim();
                 },
 
                 // ── Búsqueda de clientes vía diálogo ─────────────────
@@ -779,7 +818,9 @@
 
                 calcularTotales() {
                     this.subtotal = this.items.reduce((sum, item) => sum + ((item.cantidad || 0) * (item.precio || 0)), 0);
-                    const conDescuento = this.subtotal - (this.subtotal * ((this.descuento || 0) / 100));
+                    const fee = this.subtotal * ((this.feePorcentaje || 0) / 100);
+                    const subtotalConFee = this.subtotal + fee;
+                    const conDescuento = subtotalConFee - (subtotalConFee * ((this.descuento || 0) / 100));
                     this.iva = conDescuento * 0.16;
                     this.total = conDescuento + this.iva;
                 },
@@ -790,12 +831,14 @@
                     this.errorFoto = '';
                     this.draggingFoto = false;
                     this.mostrarDialogFoto = true;
+                    this.$nextTick(() => this.$refs.pasteZone?.focus());
                 },
 
                 cerrarDialogFoto() {
                     this.mostrarDialogFoto = false;
                     this.fotoEditIndex = null;
                     this.draggingFoto = false;
+                    if (this.$refs.pasteZone) this.$refs.pasteZone.innerHTML = '';
                 },
 
                 abrirExplorador() {
@@ -824,6 +867,8 @@
 
                 async pegarDesdePortapapeles() {
                     this.errorFoto = '';
+
+                    // Intento rápido: imagen "plana" disponible vía Clipboard API (ej. copiar un archivo de imagen)
                     try {
                         const items = await navigator.clipboard.read();
                         for (const clipboardItem of items) {
@@ -835,26 +880,84 @@
                                 return;
                             }
                         }
-                        this.errorFoto = 'No se encontró una imagen en el portapapeles.';
                     } catch (e) {
-                        this.errorFoto = 'Tu navegador no permitió leer el portapapeles. Prueba Ctrl+V con el diálogo abierto.';
+                        // Sigue al siguiente método
                     }
+
+                    // No hay imagen "plana" (típico al copiar desde Word: formato EMF/WMF).
+                    // Enfocamos la zona oculta para que el navegador la convierta al pegar.
+                    if (this.$refs.pasteZone) {
+                        this.$refs.pasteZone.innerHTML = '';
+                        this.$refs.pasteZone.focus();
+                    }
+                    this.errorFoto = 'Listo. Ahora presiona Ctrl+V para pegar la imagen.';
                 },
 
                 pegarDesdeEvento(event) {
                     if (!this.mostrarDialogFoto) return;
-                    const clipboardItems = event.clipboardData?.items;
-                    if (!clipboardItems) return;
 
-                    for (const clipboardItem of clipboardItems) {
-                        if (clipboardItem.type.startsWith('image/')) {
-                            const file = clipboardItem.getAsFile();
-                            if (file) {
-                                this.asignarArchivoAItem(file);
+                    const clipboardItems = event.clipboardData?.items;
+                    if (clipboardItems) {
+                        for (const clipboardItem of clipboardItems) {
+                            if (clipboardItem.type.startsWith('image/')) {
+                                const file = clipboardItem.getAsFile();
+                                if (file) {
+                                    this.asignarArchivoAItem(file);
+                                    return;
+                                }
                             }
-                            return;
                         }
                     }
+
+                    // No vino como imagen directa (típico al copiar de Word: EMF/WMF).
+                    // Dejamos que el navegador procese el pegado nativo en la zona oculta
+                    // (el navegador convierte el contenido a una <img> real) y la leemos después.
+                    this.errorFoto = '';
+                    setTimeout(() => this.procesarPasteZone(), 60);
+                },
+
+                async procesarPasteZone() {
+                    const zona = this.$refs.pasteZone;
+                    if (!zona) return;
+
+                    const img = zona.querySelector('img');
+                    if (!img || !img.src) {
+                        this.errorFoto = 'No se detectó ninguna imagen en el portapapeles.';
+                        zona.innerHTML = '';
+                        return;
+                    }
+
+                    try {
+                        const file = await this.rasterizarImagen(img.src);
+                        zona.innerHTML = '';
+                        this.asignarArchivoAItem(file);
+                    } catch (e) {
+                        this.errorFoto = 'No se pudo procesar la imagen pegada. Intenta de nuevo.';
+                        zona.innerHTML = '';
+                    }
+                },
+
+                // Dibuja la imagen (ya convertida por el navegador) en un canvas y obtiene un archivo PNG real
+                rasterizarImagen(src) {
+                    return new Promise((resolve, reject) => {
+                        const imagen = new Image();
+                        imagen.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = imagen.naturalWidth || imagen.width;
+                            canvas.height = imagen.naturalHeight || imagen.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(imagen, 0, 0);
+                            canvas.toBlob((blob) => {
+                                if (!blob) {
+                                    reject(new Error('No se pudo generar la imagen.'));
+                                    return;
+                                }
+                                resolve(new File([blob], 'pegado.png', { type: 'image/png' }));
+                            }, 'image/png');
+                        };
+                        imagen.onerror = () => reject(new Error('No se pudo cargar la imagen pegada.'));
+                        imagen.src = src;
+                    });
                 },
 
                 asignarArchivoAItem(file) {
@@ -893,8 +996,14 @@
                         if (this.clienteNuevoModo && !this.cliente.empresa.trim()) {
                             this.errores.push('La empresa del nuevo cliente es requerida.');
                         }
+                        if (this.clienteNuevoModo && this.cliente.empresa.length > 150) {
+                            this.errores.push('El nombre de la empresa es demasiado largo (' + this.cliente.empresa.length + '/150). Revisa si pegaste texto de más desde Word.');
+                        }
                         if (!this.cliente.nombre.trim()) {
                             this.errores.push('El nombre de contacto es requerido.');
+                        }
+                        if (this.cliente.nombre.length > 100) {
+                            this.errores.push('El nombre de contacto es demasiado largo (' + this.cliente.nombre.length + '/100). Revisa si pegaste texto de más desde Word.');
                         }
                     }
 
@@ -905,6 +1014,9 @@
                         this.items.forEach((item, i) => {
                             if (!item.nombre || !item.nombre.trim()) {
                                 this.errores.push(`El producto #${i + 1} necesita un nombre.`);
+                            }
+                            if (item.nombre && item.nombre.length > 150) {
+                                this.errores.push(`El nombre del producto #${i + 1} es demasiado largo (${item.nombre.length}/150). Revisa si pegaste texto de más desde Word.`);
                             }
                             if (!item.cantidad || item.cantidad < 1) {
                                 this.errores.push(`El producto #${i + 1} necesita una cantidad válida.`);

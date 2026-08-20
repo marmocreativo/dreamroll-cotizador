@@ -47,13 +47,15 @@
         </tbody>
     </table>
 
-    @if ($cotizacion->descuento > 0)
-    <p>Descuento aplicado: {{ $cotizacion->descuento }}%</p>
+     @if ($cotizacion->fee_porcentaje > 0)
+    <p>FEE DE AGENCIA ({{ number_format($cotizacion->fee_porcentaje, 2) }}%): ${{ number_format($cotizacion->fee_agencia, 2) }} MXN</p>
     @endif
-
-    <p>Subtotal: ${{ number_format($cotizacion->subtotal, 2) }} MXN</p>
+    <p>SUBTOTAL: ${{ number_format($cotizacion->subtotal, 2) }} MXN</p>
+    @if ($cotizacion->descuento > 0)
+    <p>DESCUENTO ({{ $cotizacion->descuento }}%): -${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100), 2) }} MXN</p>
+    @endif
     <p>IVA (16%): ${{ number_format($cotizacion->iva, 2) }} MXN</p>
-    <p class="total">Total: ${{ number_format($cotizacion->total, 2) }} MXN</p>
+    <p class="total">TOTAL: ${{ number_format($cotizacion->total, 2) }} MXN</p>
 
     @if ($cotizacion->tiempo_entrega)
     <p>Tiempo de entrega: {{ $cotizacion->tiempo_entrega }}</p>

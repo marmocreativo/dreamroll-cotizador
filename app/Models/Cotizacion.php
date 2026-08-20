@@ -23,6 +23,8 @@ class Cotizacion extends Model
         'cliente_direccion',
         'estado',
         'subtotal',
+        'fee_porcentaje',
+        'fee_agencia',
         'descuento',
         'iva',
         'total',
@@ -33,11 +35,13 @@ class Cotizacion extends Model
     ];
 
     protected $casts = [
-        'subtotal'     => 'decimal:2',
-        'descuento'    => 'decimal:2',
-        'iva'          => 'decimal:2',
-        'total'        => 'decimal:2',
-        'valida_hasta' => 'date',
+        'subtotal'       => 'decimal:2',
+        'fee_porcentaje' => 'decimal:2',
+        'fee_agencia'    => 'decimal:2',
+        'descuento'      => 'decimal:2',
+        'iva'            => 'decimal:2',
+        'total'          => 'decimal:2',
+        'valida_hasta'   => 'date',
     ];
 
     const IVA_PORCENTAJE = 16;
@@ -74,15 +78,18 @@ class Cotizacion extends Model
 
     public function recalcular(): void
     {
-        $subtotal   = $this->productos->sum('subtotal');
-        $descuento  = $subtotal * ($this->descuento / 100);
-        $baseConDescuento = $subtotal - $descuento;
-        $iva        = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
+        $subtotal         = $this->productos->sum('subtotal');
+        $feeAgencia       = $subtotal * (($this->fee_porcentaje ?? 0) / 100);
+        $baseConFee       = $subtotal + $feeAgencia;
+        $descuento        = $baseConFee * ($this->descuento / 100);
+        $baseConDescuento = $baseConFee - $descuento;
+        $iva              = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
 
         $this->update([
-            'subtotal' => $subtotal,
-            'iva'      => $iva,
-            'total'    => $baseConDescuento + $iva,
+            'subtotal'    => $subtotal,
+            'fee_agencia' => $feeAgencia,
+            'iva'         => $iva,
+            'total'       => $baseConDescuento + $iva,
         ]);
     }
 

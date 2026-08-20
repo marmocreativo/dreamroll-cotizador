@@ -33,7 +33,7 @@
         table.productos tbody tr { border-bottom: 1px solid #e5e7eb; }
         table.productos tbody td { padding: 8px 10px; }
         .text-right { text-align: right; }
-        .totales { width: 260px; margin-left: auto; margin-top: 8px; }
+        .totales { width: 360px; margin-left: auto; margin-top: 8px; }
         .totales td { padding: 4px 8px; font-size: 12px; }
         .totales .total-row { font-weight: bold; font-size: 13px; border-top: 2px solid #f5a623; color: #1b2d4f; }
         .condiciones { margin-top: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #f5a623; font-size: 11px; }
@@ -116,14 +116,20 @@
     </table>
 
     <table class="totales">
+        @if ($cotizacion->fee_porcentaje > 0)
         <tr>
-            <td>Subtotal</td>
+            <td>FEE DE AGENCIA ({{ number_format($cotizacion->fee_porcentaje, 2) }}%)</td>
+            <td class="text-right">${{ number_format($cotizacion->fee_agencia, 2) }}</td>
+        </tr>
+        @endif
+        <tr>
+            <td>SUBTOTAL</td>
             <td class="text-right">${{ number_format($cotizacion->subtotal, 2) }}</td>
         </tr>
         @if ($cotizacion->descuento > 0)
         <tr>
-            <td>Descuento ({{ $cotizacion->descuento }}%)</td>
-            <td class="text-right">-${{ number_format($cotizacion->subtotal * ($cotizacion->descuento / 100), 2) }}</td>
+            <td>DESCUENTO ({{ $cotizacion->descuento }}%)</td>
+            <td class="text-right">-${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100), 2) }}</td>
         </tr>
         @endif
         <tr>
@@ -131,7 +137,7 @@
             <td class="text-right">${{ number_format($cotizacion->iva, 2) }}</td>
         </tr>
         <tr class="total-row">
-            <td>Total</td>
+            <td>TOTAL</td>
             <td class="text-right">${{ number_format($cotizacion->total, 2) }} MXN</td>
         </tr>
     </table>

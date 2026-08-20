@@ -56,6 +56,7 @@ class CotizacionController extends Controller
             'cliente_direccion'  => 'nullable|string|max:255',
 
             // Paso 2 — productos
+            'fee_porcentaje'            => 'nullable|numeric|min:0|max:100',
             'descuento'                 => 'nullable|numeric|min:0|max:100',
             'productos'                 => 'required|array|min:1',
             'productos.*.id'                  => 'nullable|exists:productos,id',
@@ -85,6 +86,7 @@ class CotizacionController extends Controller
             'cliente_telefono'  => $validated['cliente_telefono'] ?? null,
             'cliente_email'     => $validated['cliente_email'] ?? null,
             'cliente_direccion' => $validated['cliente_direccion'] ?? null,
+            'fee_porcentaje'    => $validated['fee_porcentaje'] ?? 10,
             'descuento'         => $validated['descuento'] ?? 0,
             'tiempo_entrega'    => $validated['tiempo_entrega'] ?? null,
             'condiciones'       => $validated['condiciones'] ?? null,
@@ -145,6 +147,7 @@ class CotizacionController extends Controller
             'cliente_telefono'   => 'nullable|string|max:20',
             'cliente_email'      => 'nullable|email|max:150',
             'cliente_direccion'  => 'nullable|string|max:255',
+            'fee_porcentaje'     => 'nullable|numeric|min:0|max:100',
             'descuento'          => 'nullable|numeric|min:0|max:100',
             'productos'                 => 'required|array|min:1',
             'productos.*.id'            => 'nullable|exists:productos,id',
@@ -170,6 +173,7 @@ class CotizacionController extends Controller
             'cliente_telefono'  => $validated['cliente_telefono'] ?? null,
             'cliente_email'     => $validated['cliente_email'] ?? null,
             'cliente_direccion' => $validated['cliente_direccion'] ?? null,
+            'fee_porcentaje'    => $validated['fee_porcentaje'] ?? 10,
             'descuento'         => $validated['descuento'] ?? 0,
             'tiempo_entrega'    => $validated['tiempo_entrega'] ?? null,
             'condiciones'       => $validated['condiciones'] ?? null,
