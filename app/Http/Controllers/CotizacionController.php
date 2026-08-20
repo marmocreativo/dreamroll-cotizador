@@ -147,14 +147,16 @@ class CotizacionController extends Controller
             'cliente_telefono'   => 'nullable|string|max:20',
             'cliente_email'      => 'nullable|email|max:150',
             'cliente_direccion'  => 'nullable|string|max:255',
-            'fee_porcentaje'     => 'nullable|numeric|min:0|max:100',
-            'descuento'          => 'nullable|numeric|min:0|max:100',
-            'productos'                 => 'required|array|min:1',
-            'productos.*.id'            => 'nullable|exists:productos,id',
-            'productos.*.nombre'        => 'required|string|max:150',
-            'productos.*.cantidad'      => 'required|integer|min:1',
-            'productos.*.precio'        => 'required|numeric|min:0',
-            'productos.*.imagen'        => 'nullable|image|max:5120',
+            'fee_porcentaje'                  => 'nullable|numeric|min:0|max:100',
+            'descuento'                       => 'nullable|numeric|min:0|max:100',
+            'productos'                       => 'required|array|min:1',
+            'productos.*.id'                  => 'nullable|exists:productos,id',
+            'productos.*.nombre'              => 'required|string|max:150',
+            'productos.*.costo'               => 'nullable|numeric|min:0',
+            'productos.*.aumento_porcentaje'  => 'nullable|numeric|min:0',
+            'productos.*.cantidad'            => 'required|integer|min:1',
+            'productos.*.precio'              => 'required|numeric|min:0',
+            'productos.*.imagen'              => 'nullable|image|max:5120',
             'tiempo_entrega' => 'nullable|string|max:100',
             'condiciones'    => 'nullable|string',
             'valida_hasta'   => 'nullable|date',
@@ -338,14 +340,24 @@ class CotizacionController extends Controller
             return $producto->id;
         }
 
-        if ($imagen) {
-            $producto = Producto::find($item['id']);
-            if ($producto) {
+        $producto = Producto::find($item['id']);
+
+        if ($producto) {
+            $datosActualizar = [
+                'nombre'             => $item['nombre'],
+                'costo'              => $item['costo'] ?? null,
+                'aumento_porcentaje' => $item['aumento_porcentaje'] ?? null,
+                'precio_unitario'    => $item['precio'],
+            ];
+
+            if ($imagen) {
                 if ($producto->imagen) {
                     Storage::disk('public')->delete($producto->imagen);
                 }
-                $producto->update(['imagen' => $this->procesarImagenProducto($imagen)]);
+                $datosActualizar['imagen'] = $this->procesarImagenProducto($imagen);
             }
+
+            $producto->update($datosActualizar);
         }
 
         return $item['id'];

@@ -1,5 +1,8 @@
 <x-layouts::app :title="__('Nueva cotización')">
 
+    <!-- CDN de Quill -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+
     <div class="mb-6 flex items-center gap-4">
         <a href="{{ route('cotizaciones.index') }}"
            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
@@ -13,7 +16,7 @@
         </div>
     </div>
 
-    <div x-data="cotizacionWizard()" x-init="init()" class="max-w-4xl">
+    <div x-data="cotizacionWizard()" class="max-w-4xl">
 
         {{-- Stepper --}}
         <div class="mb-8 flex items-center">
@@ -51,7 +54,7 @@
             </ul>
         </div>
 
-        <form method="POST" action="{{ route('cotizaciones.store') }}" enctype="multipart/form-data" @submit="return validarPaso(3)">
+        <form method="POST" action="{{ route('cotizaciones.store') }}" enctype="multipart/form-data" @submit="enviarFormulario($event)">
             @csrf
 
             {{-- ── PASO 1: Cliente ───────────────────────────────── --}}
@@ -60,7 +63,6 @@
 
                 <input type="hidden" name="cliente_id" :value="cliente.id ?? ''">
 
-                {{-- Buscador de cliente: escribe y presiona Enter o el botón para abrir el diálogo de resultados --}}
                 <div x-show="!cliente.id && !clienteNuevoModo" x-cloak>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Buscar cliente</label>
                     <div class="flex gap-2">
@@ -81,7 +83,6 @@
                     + Agregar nuevo cliente
                 </button>
 
-                {{-- Cliente seleccionado (chip con opción de cambiar) --}}
                 <div x-show="cliente.id" x-cloak class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
                     <div>
                         <p class="text-sm font-medium text-gray-900" x-text="cliente.empresa"></p>
@@ -92,7 +93,6 @@
                     </button>
                 </div>
 
-                {{-- Datos fiscales (solo si es cliente nuevo) --}}
                 <template x-if="clienteNuevoModo">
                     <div class="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
                         <div class="flex items-center justify-between">
@@ -130,7 +130,6 @@
                     </div>
                 </template>
 
-                {{-- Datos de contacto (editables siempre, vengan de cliente existente o nuevo) --}}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Prefijo</label>
@@ -199,7 +198,6 @@
             <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
                 <p class="text-sm font-medium text-gray-700">Productos/Servicios</p>
 
-                {{-- Buscador: escribe y presiona Enter o el botón para abrir el diálogo de resultados --}}
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto o servicio</label>
                     <div class="flex gap-2">
@@ -215,7 +213,6 @@
                     </div>
                 </div>
 
-                {{-- Tabla de productos agregados --}}
                 <div class="overflow-hidden rounded-lg border border-gray-200">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left">
@@ -245,7 +242,6 @@
                                                 </svg>
                                             </span>
                                         </div>
-                                        {{-- Input real que viaja en el form; se llena vía diálogo --}}
                                         <input type="file" accept="image/*" class="hidden"
                                                :id="'foto-input-' + item.uid"
                                                :name="'productos['+index+'][imagen]'"
@@ -300,7 +296,6 @@
                     </table>
                 </div>
 
-                {{-- Descuento y totales --}}
                 <div class="flex justify-end">
                     <div class="w-full max-w-xs space-y-2 rounded-lg border border-gray-200 p-4">
                         <div class="flex items-center justify-between text-sm">
@@ -350,10 +345,12 @@
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700">Condiciones</label>
-                    <textarea name="condiciones" x-model="entrega.condiciones" rows="4"
-                              placeholder="Términos de pago, garantías, etc."
-                              class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
+                    <label for="condiciones" class="mb-1 block text-sm font-medium text-gray-700">Condiciones</label>
+                    <div id="condiciones-editor" style="height: 150px; background: #fff;">
+                        {!! old('condiciones', "* Forma de pago 50% anticipo 50% contra entrega.<br>* Esta cotización tiene una vigencia de 15 días a partir de la fecha de elaboración.<br>* Tiempo de entrega: a definir una vez entregada la orden de compra y/o autorización.") !!}
+                    </div>
+                    <!-- Este input hidden es el que realmente se manda en el submit -->
+                    <input type="hidden" name="condiciones" id="condiciones-input">
                 </div>
 
                 <div>
@@ -363,7 +360,6 @@
                               class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
                 </div>
 
-                {{-- Resumen final --}}
                 <div class="rounded-lg bg-gray-50 p-4">
                     <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Resumen</p>
                     <div class="flex items-center justify-between text-sm">
@@ -520,12 +516,10 @@
                 </div>
 
                 <div class="space-y-4 p-5">
-                    {{-- Zona invisible donde el navegador procesa el pegado nativo (convierte EMF/WMF de Word a imagen real) --}}
                     <div x-ref="pasteZone" contenteditable="true" tabindex="-1"
                          style="position:fixed; top:-9999px; left:-9999px; width:1px; height:1px; overflow:hidden;"
                          aria-hidden="true"></div>
 
-                    {{-- Zona de drag & drop --}}
                     <div @dragover.prevent="draggingFoto = true"
                          @dragleave.prevent="draggingFoto = false"
                          @drop.prevent="onDropFoto($event)"
@@ -562,12 +556,14 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     <script>
         function cotizacionWizard() {
             return {
                 paso: 1,
                 pasos: ['Cliente', 'Productos', 'Entrega y condiciones'],
                 errores: [],
+                quill: null,
 
                 cliente: {
                     id: null,
@@ -585,7 +581,6 @@
                 },
                 clienteNuevoModo: false,
 
-                // Búsqueda de clientes (paso 1)
                 busquedaCliente: '',
                 terminoBuscadoCliente: '',
                 resultadosBusquedaCliente: [],
@@ -594,17 +589,14 @@
                 entrega: {
                     tiempo: '{{ old('tiempo_entrega') }}',
                     validaHasta: '{{ old('valida_hasta') }}',
-                    condiciones: {!! json_encode(old('condiciones', "* Forma de pago 50% anticipo 50% contra entrega.\n* Esta cotización tiene una vigencia de 15 días a partir de la fecha de elaboración.\n* Tiempo de entrega: a definir una vez entregada la orden de compra y/o autorización.")) !!},
                     notas: '{{ old('notas') }}',
                 },
 
-                // Búsqueda de productos (paso 2)
                 busqueda: '',
                 terminoBuscado: '',
                 resultadosBusqueda: [],
                 mostrarDialogBusqueda: false,
 
-                // Diálogo de imagen
                 mostrarDialogFoto: false,
                 fotoEditIndex: null,
                 draggingFoto: false,
@@ -634,21 +626,41 @@
                             }
                         }, 0);
                     });
+
+                    // Inicializa Quill una sola vez, aquí en el init de Alpine
+                    this.quill = new Quill('#condiciones-editor', {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline'],
+                                [{ list: 'ordered' }, { list: 'bullet' }],
+                                ['clean']
+                            ]
+                        }
+                    });
+                },
+
+                // Sincroniza Quill al hidden input y valida antes de enviar
+                enviarFormulario(event) {
+                    document.querySelector('#condiciones-input').value = this.quill.root.innerHTML;
+
+                    if (!this.validarPaso(3)) {
+                        event.preventDefault();
+                    }
                 },
 
                 limpiarTextoWord(texto) {
                     if (!texto) return texto;
                     return texto
-                        .replace(/[\u2018\u2019]/g, "'")   // comillas simples tipográficas
-                        .replace(/[\u201C\u201D]/g, '"')   // comillas dobles tipográficas
-                        .replace(/[\u2013\u2014]/g, '-')   // guiones en/em dash
-                        .replace(/\u2026/g, '...')          // puntos suspensivos
-                        .replace(/[\u00A0\u200B\uFEFF]/g, ' ') // espacios no separables e invisibles
+                        .replace(/[\u2018\u2019]/g, "'")
+                        .replace(/[\u201C\u201D]/g, '"')
+                        .replace(/[\u2013\u2014]/g, '-')
+                        .replace(/\u2026/g, '...')
+                        .replace(/[\u00A0\u200B\uFEFF]/g, ' ')
                         .replace(/\r\n/g, '\n')
                         .trim();
                 },
 
-                // ── Búsqueda de clientes vía diálogo ─────────────────
                 async buscarClientes() {
                     const termino = this.busquedaCliente.trim();
                     if (termino.length < 2) return;
@@ -713,7 +725,6 @@
                     this.clienteNuevoModo = false;
                 },
 
-                // ── Búsqueda de productos vía diálogo ────────────────
                 async buscarProductos() {
                     const termino = this.busqueda.trim();
                     if (termino.length < 2) return;
@@ -798,7 +809,6 @@
                     this.total = conDescuento + this.iva;
                 },
 
-                // ── Diálogo de imagen ─────────────────────────────────
                 abrirDialogFoto(index) {
                     this.fotoEditIndex = index;
                     this.errorFoto = '';
@@ -841,7 +851,6 @@
                 async pegarDesdePortapapeles() {
                     this.errorFoto = '';
 
-                    // Intento rápido: imagen "plana" disponible vía Clipboard API (ej. copiar un archivo de imagen)
                     try {
                         const items = await navigator.clipboard.read();
                         for (const clipboardItem of items) {
@@ -857,8 +866,6 @@
                         // Sigue al siguiente método
                     }
 
-                    // No hay imagen "plana" (típico al copiar desde Word: formato EMF/WMF).
-                    // Enfocamos la zona oculta para que el navegador la convierta al pegar.
                     if (this.$refs.pasteZone) {
                         this.$refs.pasteZone.innerHTML = '';
                         this.$refs.pasteZone.focus();
@@ -882,9 +889,6 @@
                         }
                     }
 
-                    // No vino como imagen directa (típico al copiar de Word: EMF/WMF).
-                    // Dejamos que el navegador procese el pegado nativo en la zona oculta
-                    // (el navegador convierte el contenido a una <img> real) y la leemos después.
                     this.errorFoto = '';
                     setTimeout(() => this.procesarPasteZone(), 60);
                 },
@@ -910,7 +914,6 @@
                     }
                 },
 
-                // Dibuja la imagen (ya convertida por el navegador) en un canvas y obtiene un archivo PNG real
                 rasterizarImagen(src) {
                     return new Promise((resolve, reject) => {
                         const imagen = new Image();

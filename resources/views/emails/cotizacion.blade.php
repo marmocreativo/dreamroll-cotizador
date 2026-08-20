@@ -40,22 +40,22 @@
                 </td>
                 <td>{{ $renglon->producto?->nombre ?? '—' }}</td>
                 <td>{{ $renglon->cantidad }}</td>
-                <td>${{ number_format($renglon->precio_unitario, 2) }} MXN</td>
-                <td>${{ number_format($renglon->subtotal, 2) }} MXN</td>
+                <td>${{ number_format($renglon->precio_unitario, 2) }}</td>
+                <td>${{ number_format($renglon->subtotal, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
      @if ($cotizacion->fee_porcentaje > 0)
-    <p>FEE DE AGENCIA ({{ number_format($cotizacion->fee_porcentaje, 2) }}%): ${{ number_format($cotizacion->fee_agencia, 2) }} MXN</p>
+    <p>FEE DE AGENCIA ({{ number_format($cotizacion->fee_porcentaje, 2) }}%): ${{ number_format($cotizacion->fee_agencia, 2) }}</p>
     @endif
-    <p>SUBTOTAL: ${{ number_format($cotizacion->subtotal, 2) }} MXN</p>
+    <p>SUBTOTAL: ${{ number_format($cotizacion->subtotal, 2) }}</p>
     @if ($cotizacion->descuento > 0)
-    <p>DESCUENTO ({{ $cotizacion->descuento }}%): -${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100), 2) }} MXN</p>
+    <p>DESCUENTO ({{ $cotizacion->descuento }}%): -${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100), 2) }}</p>
     @endif
-    <p>IVA (16%): ${{ number_format($cotizacion->iva, 2) }} MXN</p>
-    <p class="total">TOTAL: ${{ number_format($cotizacion->total, 2) }} MXN</p>
+    <p>IVA (16%): ${{ number_format($cotizacion->iva, 2) }}</p>
+    <p class="total">TOTAL: ${{ number_format($cotizacion->total, 2) }}</p>
 
     @if ($cotizacion->tiempo_entrega)
     <p>Tiempo de entrega: {{ $cotizacion->tiempo_entrega }}</p>

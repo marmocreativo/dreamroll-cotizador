@@ -7,7 +7,7 @@
         .header { margin-bottom: 24px; }
         .header-logo { margin-bottom: 4px; }
         .pleca { width: 100%; margin-bottom: 20px; }
-        .datos-tabla { width: 100%; margin-bottom: 24px; }
+        .datos-tabla { width: 100%; margin-bottom: 6px; }
         .datos-tabla td { vertical-align: top; padding: 0; }
         .col-cliente { width: 78%; }
         .col-fecha { width: 22%; text-align: right; }
@@ -26,7 +26,7 @@
         .col-cliente .contacto { font-size: 12px; color: #333; }
         .col-cliente .puesto { font-size: 11px; color: #666; }
         .col-fecha .dato { font-size: 12px; color: #333; }
-        .intro { margin-bottom: 20px; color: #444; }
+        .intro { margin-top: 4px; margin-bottom: 20px; color: #444; }
         table.productos { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
         table.productos thead tr { background-color: #1b2d4f; color: #fff; }
         table.productos thead th { padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
@@ -37,6 +37,7 @@
         .totales td { padding: 4px 8px; font-size: 12px; }
         .totales .total-row { font-weight: bold; font-size: 13px; border-top: 2px solid #f5a623; color: #1b2d4f; }
         .condiciones { margin-top: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #f5a623; font-size: 11px; }
+        .condiciones .vigencia { margin-top: 8px; }
         .footer { margin-top: 40px; font-size: 11px; color: #888; border-top: 1px solid #e5e7eb; padding-top: 12px; }
         .firma { margin-top: 30px; }
         .firma img { height: 60px; width: auto; display: block; margin-bottom: 4px; }
@@ -66,10 +67,6 @@
             <td class="col-fecha">
                 <strong class="titulo">Fecha</strong>
                 <div class="dato">{{ now()->isoFormat('D [de] MMMM [de] YYYY') }}</div>
-                @if ($cotizacion->valida_hasta)
-                    <strong class="titulo" style="margin-top:8px;">Vigencia</strong>
-                    <div class="dato">Válida hasta el {{ $cotizacion->valida_hasta->format('d/m/Y') }}</div>
-                @endif
             </td>
         </tr>
     </table>
@@ -108,8 +105,8 @@
                     <strong>{{ $renglon->producto?->nombre ?? '—' }}</strong>
                 </td>
                 <td class="text-right">{{ $renglon->cantidad }}</td>
-                <td class="text-right">${{ number_format($renglon->precio_unitario, 2) }} MXN</td>
-                <td class="text-right">${{ number_format($renglon->subtotal, 2) }} MXN</td>
+                <td class="text-right">${{ number_format($renglon->precio_unitario, 2) }}</td>
+                <td class="text-right">${{ number_format($renglon->subtotal, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -138,26 +135,31 @@
         </tr>
         <tr class="total-row">
             <td>TOTAL</td>
-            <td class="text-right">${{ number_format($cotizacion->total, 2) }} MXN</td>
+            <td class="text-right">${{ number_format($cotizacion->total, 2) }}</td>
         </tr>
     </table>
 
-    @if ($cotizacion->tiempo_entrega || $cotizacion->condiciones)
-    <div class="condiciones">
-        <strong>Bajo las siguientes condiciones:</strong><br>
-        @if ($cotizacion->tiempo_entrega)
-            Tiempo de entrega: {{ $cotizacion->tiempo_entrega }}<br>
-        @endif
-        @if ($cotizacion->condiciones)
-            {{ $cotizacion->condiciones }}<br>
-        @endif
-        El importe final ya incluye IVA.
-    </div>
+    @if ($cotizacion->tiempo_entrega || $cotizacion->condiciones || $cotizacion->valida_hasta)
+        <div class="condiciones">
+            <strong>Bajo las siguientes condiciones:</strong><br>
+            @if ($cotizacion->tiempo_entrega)
+                Tiempo de entrega: {{ $cotizacion->tiempo_entrega }}<br>
+            @endif
+            @if ($cotizacion->condiciones)
+                {!! $cotizacion->condiciones !!}<br>
+            @endif
+            El importe final ya incluye IVA.
+
+            @if ($cotizacion->valida_hasta)
+                <div class="vigencia">
+                    <strong>Vigencia:</strong> Válida hasta el {{ $cotizacion->valida_hasta->format('d/m/Y') }}
+                </div>
+            @endif
+        </div>
     @endif
 
     <div class="footer">
-        Agradecemos su interés en nuestra propuesta. Si tiene alguna pregunta o necesita más información,
-        no dude en ponerse en contacto con nosotros.<br><br>
+        Esperamos que nuestra oferta cumpla con sus expectativas.<br><br>
         Cordialmente
 
         @if ($usuario ?? null)
