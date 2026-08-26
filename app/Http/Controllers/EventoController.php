@@ -36,7 +36,7 @@ class EventoController extends Controller
         $validated = $request->validate([
             'titulo'      => 'required|string|max:150',
             'descripcion' => 'required|string',
-            'fecha'       => 'nullable|date',
+            'fecha'       => 'nullable|string|max:100',
             'lugar'       => 'nullable|string|max:150',
             'cliente'     => 'nullable|string|max:150',
             'activo'      => 'boolean',
@@ -65,7 +65,7 @@ class EventoController extends Controller
         $validated = $request->validate([
             'titulo'      => 'required|string|max:150',
             'descripcion' => 'required|string',
-            'fecha'       => 'nullable|date',
+            'fecha'       => 'nullable|string|max:100',
             'lugar'       => 'nullable|string|max:150',
             'cliente'     => 'nullable|string|max:150',
             'activo'      => 'boolean',

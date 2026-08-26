@@ -13,7 +13,7 @@ class EventoResource extends JsonResource
             'id'          => $this->id,
             'titulo'      => $this->titulo,
             'descripcion' => $this->descripcion,
-            'fecha'       => $this->fecha?->format('Y-m-d'),
+            'fecha'       => $this->fecha,
             'lugar'       => $this->lugar,
             'cliente'     => $this->cliente,
             'portada_url' => $this->portada_url,

@@ -32,7 +32,8 @@
         table.productos thead th { padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
         table.productos tbody tr { border-bottom: 1px solid #e5e7eb; }
         table.productos tbody td { padding: 8px 10px; }
-        .text-right { text-align: right; }
+        .text-right { text-align: right; white-space: nowrap; }
+        .text-center { text-align: center; white-space: nowrap; }
         .totales { width: 360px; margin-left: auto; margin-top: 8px; }
         .totales td { padding: 4px 8px; font-size: 12px; }
         .totales .total-row { font-weight: bold; font-size: 13px; border-top: 2px solid #f5a623; color: #1b2d4f; }
@@ -80,9 +81,9 @@
             <tr>
                 <th style="width: 50px;"></th>
                 <th>Descripción</th>
-                <th class="text-right">Cantidad</th>
-                <th class="text-right">Precio unitario</th>
-                <th class="text-right">Subtotal</th>
+                <th class="text-center">Cantidad</th>
+                <th class="text-center">Precio unitario</th>
+                <th class="text-center">Subtotal</th>
             </tr>
         </thead>
         <tbody>
@@ -104,9 +105,9 @@
                 <td>
                     <strong>{{ $renglon->producto?->nombre ?? '—' }}</strong>
                 </td>
-                <td class="text-right">{{ $renglon->cantidad }}</td>
-                <td class="text-right">${{ number_format($renglon->precio_unitario, 2) }}</td>
-                <td class="text-right">${{ number_format($renglon->subtotal, 2) }}</td>
+                <td class="text-center">{{ $renglon->cantidad }}</td>
+                <td class="text-center">${{ number_format($renglon->precio_unitario, 2) }}</td>
+                <td class="text-center">${{ number_format($renglon->subtotal, 2) }}</td>
             </tr>
             @endforeach
         </tbody>

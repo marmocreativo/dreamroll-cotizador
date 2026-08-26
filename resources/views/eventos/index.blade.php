@@ -57,7 +57,7 @@
                     <p class="mb-2 text-sm text-gray-500 line-clamp-2">{{ $evento->descripcion }}</p>
                     <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400">
                         @if($evento->fecha)
-                            <span>{{ $evento->fecha->format('d/m/Y') }}</span>
+                            <span>{{ $evento->fecha }}</span>
                         @endif
                         @if($evento->lugar)
                             <span>{{ $evento->lugar }}</span>

@@ -52,8 +52,9 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Fecha</label>
-                    <input type="date" name="fecha" value="{{ old('fecha', isset($evento) && $evento->fecha ? $evento->fecha->toDateString() : '') }}"
-                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                    <input type="text" name="fecha" value="{{ old('fecha', $evento->fecha ?? '') }}"
+                           placeholder="Ej. Marzo 2025, De abril a junio 2026"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Lugar</label>

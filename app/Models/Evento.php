@@ -19,7 +19,6 @@ class Evento extends Model
     ];
 
     protected $casts = [
-        'fecha' => 'date',
         'activo' => 'boolean',
     ];
 

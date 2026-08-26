@@ -13,7 +13,7 @@
                 <div>
                     <h1 class="text-2xl font-semibold text-secondary">{{ $evento->titulo }}</h1>
                     <p class="text-sm text-gray-500">
-                        {{ $evento->fecha?->format('d/m/Y') }}
+                        {{ $evento->fecha }}
                         @if($evento->fecha && ($evento->lugar || $evento->cliente)) &middot; @endif
                         {{ $evento->lugar }}
                         @if($evento->lugar && $evento->cliente) &middot; @endif

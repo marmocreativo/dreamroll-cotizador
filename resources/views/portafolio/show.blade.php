@@ -76,7 +76,7 @@
                 <h1 class="text-3xl font-extrabold sm:text-4xl" style="color:#1b2d4f;">{{ $evento->titulo }}</h1>
                 <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400">
                     @if($evento->fecha)
-                        <span>{{ $evento->fecha->translatedFormat('d M Y') }}</span>
+                        <span>{{ $evento->fecha }}</span>
                     @endif
                     @if($evento->lugar)
                         <span>{{ $evento->lugar }}</span>
