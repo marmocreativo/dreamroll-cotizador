@@ -10,6 +10,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
                     </svg>
                 </a>
+                <img src="{{ asset($cotizacion->origen === 'latimer' ? 'logo_latimer.png' : 'logo_principal.png') }}"
+                     alt="{{ $cotizacion->origen === 'latimer' ? 'Latimer' : 'Dream Roll' }}"
+                     class="h-9 w-auto object-contain" />
                 <div>
                     <h1 class="text-2xl font-semibold text-secondary">{{ $cotizacion->folio }}</h1>
                     <p class="text-sm text-gray-500">Creada el {{ $cotizacion->created_at->format('d/m/Y H:i') }}</p>
@@ -193,6 +196,27 @@
                                 </option>
                             @endforeach
                         </select>
+                    </form>
+                </div>
+
+                {{-- Firmante --}}
+                <div class="rounded-xl border border-gray-200 bg-white p-6">
+                    <p class="mb-3 text-sm font-medium text-gray-700">Firma en PDF / correo</p>
+                    <form method="POST" action="{{ route('cotizaciones.firmante', $cotizacion) }}">
+                        @csrf
+                        @method('PATCH')
+                        <select name="firmante_id" onchange="this.form.submit()"
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            @foreach($usuarios as $usuario)
+                                <option value="{{ $usuario->id }}"
+                                    @selected(($cotizacion->firmante_id ?? $cotizacion->created_by) === $usuario->id)>
+                                    {{ $usuario->nombre_completo }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-2 text-xs text-gray-400">
+                            El PDF y el correo se firman con la firma del usuario seleccionado.
+                        </p>
                     </form>
                 </div>
 

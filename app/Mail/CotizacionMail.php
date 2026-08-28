@@ -33,15 +33,23 @@ class CotizacionMail extends Mailable
 
     public function content(): Content
     {
+        $vista = $this->cotizacion->origen === 'latimer'
+            ? 'emails.cotizacion-latimer'
+            : 'emails.cotizacion';
+
         return new Content(
-            view: 'emails.cotizacion',
+            view: $vista,
             with: ['cotizacion' => $this->cotizacion],
         );
     }
 
     public function attachments(): array
     {
-        $pdf = Pdf::loadView('pdf.cotizacion', [
+        $vistaPdf = $this->cotizacion->origen === 'latimer'
+            ? 'pdf.cotizacion-latimer'
+            : 'pdf.cotizacion';
+
+        $pdf = Pdf::loadView($vistaPdf, [
             'cotizacion' => $this->cotizacion,
             'usuario'    => $this->usuario,
         ]);

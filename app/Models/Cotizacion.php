@@ -13,6 +13,9 @@ class Cotizacion extends Model
     protected $fillable = [
         'folio',
         'cliente_id',
+        'created_by',
+        'firmante_id',
+        'origen',
         'cliente_prefijo',
         'cliente_nombre',
         'cliente_apellidos',
@@ -96,5 +99,15 @@ class Cotizacion extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function creador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function firmante(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'firmante_id');
     }
 }

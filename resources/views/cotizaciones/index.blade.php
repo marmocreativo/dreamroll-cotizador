@@ -53,6 +53,7 @@
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-left">
                 <tr>
+                    <th class="px-4 py-3 w-12"></th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Folio</th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Cliente</th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Empresa</th>
@@ -75,6 +76,12 @@
                 @forelse($cotizaciones as $cotizacion)
                     <tr class="hover:bg-gray-50 transition-colors cursor-pointer"
                         onclick="window.location='{{ route('cotizaciones.show', $cotizacion) }}'">
+                        <td class="px-4 py-3">
+                            <img src="{{ asset($cotizacion->origen === 'latimer' ? 'logo_latimer.png' : 'logo_principal.png') }}"
+                                 alt="{{ $cotizacion->origen === 'latimer' ? 'Latimer' : 'Dream Roll' }}"
+                                 title="{{ $cotizacion->origen === 'latimer' ? 'Latimer' : 'Dream Roll' }}"
+                                 class="h-6 w-auto object-contain" />
+                        </td>
                         <td class="px-4 py-3 font-medium text-gray-900">{{ $cotizacion->folio }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $cotizacion->cliente_nombre_completo }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $cotizacion->cliente_empresa ?: '—' }}</td>
@@ -105,7 +112,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="8" class="px-4 py-12 text-center text-gray-400">
                             No hay cotizaciones registradas.
                         </td>
                     </tr>

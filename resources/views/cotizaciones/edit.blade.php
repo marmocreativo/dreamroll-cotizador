@@ -60,6 +60,19 @@
 
             {{-- ── PASO 1: Cliente ───────────────────────────────── --}}
             <div x-show="paso === 1" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Origen de la cotización</label>
+                    <select name="origen" x-model="origen"
+                            class="w-full max-w-xs rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="dreamroll">Dream Roll</option>
+                        <option value="latimer">Latimer</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">
+                        Define la identidad (logo, colores y textos) del PDF y correo enviados al cliente.
+                    </p>
+                </div>
+
                 <p class="text-sm font-medium text-gray-700">Cliente</p>
 
                 <input type="hidden" name="cliente_id" :value="cliente.id ?? ''">
@@ -606,6 +619,8 @@
                 pasos: ['Cliente', 'Productos', 'Entrega y condiciones'],
                 errores: [],
                 quill: null,
+
+                origen: '{{ old('origen', $cotizacion->origen) }}',
 
                 cliente: @json($clienteData),
                 clienteNuevoModo: false,

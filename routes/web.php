@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('cotizaciones/{cotizacion}/estado', [CotizacionController::class, 'actualizarEstado'])
         ->name('cotizaciones.estado');
 
+    Route::patch('cotizaciones/{cotizacion}/firmante', [CotizacionController::class, 'actualizarFirmante'])
+        ->name('cotizaciones.firmante');
+
     Route::post('cotizaciones/{cotizacion}/enviar', [CotizacionController::class, 'enviar'])
         ->name('cotizaciones.enviar');
 

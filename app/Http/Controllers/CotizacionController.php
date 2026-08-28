@@ -55,6 +55,8 @@ class CotizacionController extends Controller
             'cliente_email'      => 'nullable|email|max:150',
             'cliente_direccion'  => 'nullable|string|max:255',
 
+            'origen' => 'nullable|in:dreamroll,latimer',
+
             // Paso 2 — productos
             'fee_porcentaje'            => 'nullable|numeric|min:0|max:100',
             'descuento'                 => 'nullable|numeric|min:0|max:100',
@@ -78,6 +80,9 @@ class CotizacionController extends Controller
 
         $cotizacion = Cotizacion::create([
             'cliente_id'        => $clienteId,
+            'created_by'        => auth()->id(),
+            'firmante_id'       => auth()->id(),
+            'origen'            => $validated['origen'] ?? 'dreamroll',
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
@@ -119,9 +124,10 @@ class CotizacionController extends Controller
 
     public function show(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto');
+        $cotizacion->load('productos.producto', 'creador', 'firmante');
+        $usuarios = \App\Models\User::orderBy('name')->get();
 
-        return view('cotizaciones.show', compact('cotizacion'));
+        return view('cotizaciones.show', compact('cotizacion', 'usuarios'));
     }
 
     public function edit(Cotizacion $cotizacion)
@@ -147,6 +153,7 @@ class CotizacionController extends Controller
             'cliente_telefono'   => 'nullable|string|max:20',
             'cliente_email'      => 'nullable|email|max:150',
             'cliente_direccion'  => 'nullable|string|max:255',
+            'origen'             => 'nullable|in:dreamroll,latimer',
             'fee_porcentaje'                  => 'nullable|numeric|min:0|max:100',
             'descuento'                       => 'nullable|numeric|min:0|max:100',
             'productos'                       => 'required|array|min:1',
@@ -175,6 +182,7 @@ class CotizacionController extends Controller
             'cliente_telefono'  => $validated['cliente_telefono'] ?? null,
             'cliente_email'     => $validated['cliente_email'] ?? null,
             'cliente_direccion' => $validated['cliente_direccion'] ?? null,
+            'origen'            => $validated['origen'] ?? $cotizacion->origen,
             'fee_porcentaje'    => $validated['fee_porcentaje'] ?? 10,
             'descuento'         => $validated['descuento'] ?? 0,
             'tiempo_entrega'    => $validated['tiempo_entrega'] ?? null,
@@ -224,17 +232,29 @@ class CotizacionController extends Controller
         return back()->with('success', 'Estado actualizado correctamente.');
     }
 
+    public function actualizarFirmante(Request $request, Cotizacion $cotizacion)
+    {
+        $request->validate([
+            'firmante_id' => 'required|exists:users,id',
+        ]);
+
+        $cotizacion->update(['firmante_id' => $request->firmante_id]);
+
+        return back()->with('success', 'Firmante actualizado correctamente.');
+    }
+
     public function enviar(Request $request, Cotizacion $cotizacion)
     {
         $request->validate([
             'email' => 'required|email',
         ]);
 
-        $cotizacion->load('productos.producto');
+        $cotizacion->load('productos.producto', 'firmante');
+        $firmante = $cotizacion->firmante ?? auth()->user();
 
         \Illuminate\Support\Facades\Mail::to($request->email)
             ->bcc('leopoldo.maciel@dream-roll.com')
-            ->send(new \App\Mail\CotizacionMail($cotizacion, auth()->user()));
+            ->send(new \App\Mail\CotizacionMail($cotizacion, $firmante));
 
         $cotizacion->update(['estado' => 'enviada']);
 
@@ -269,22 +289,32 @@ class CotizacionController extends Controller
 
     public function descargarPdf(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto');
-        $usuario = auth()->user();
+        $cotizacion->load('productos.producto', 'firmante');
+        $usuario = $cotizacion->firmante ?? auth()->user();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion', 'usuario'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($this->vistaPdf($cotizacion), compact('cotizacion', 'usuario'));
 
         return $pdf->download($cotizacion->folio . '.pdf');
     }
 
     public function verPdf(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto');
-        $usuario = auth()->user();
+        $cotizacion->load('productos.producto', 'firmante');
+        $usuario = $cotizacion->firmante ?? auth()->user();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cotizacion', compact('cotizacion', 'usuario'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($this->vistaPdf($cotizacion), compact('cotizacion', 'usuario'));
 
         return $pdf->stream($cotizacion->folio . '.pdf');
+    }
+
+    /**
+     * Devuelve el nombre de la vista de PDF según el origen de la cotización.
+     */
+    private function vistaPdf(Cotizacion $cotizacion): string
+    {
+        return $cotizacion->origen === 'latimer'
+            ? 'pdf.cotizacion-latimer'
+            : 'pdf.cotizacion';
     }
 
     /**
