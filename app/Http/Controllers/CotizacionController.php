@@ -56,24 +56,47 @@ class CotizacionController extends Controller
             'cliente_direccion'  => 'nullable|string|max:255',
 
             'origen' => 'nullable|in:dreamroll,latimer',
+            'moneda' => 'nullable|in:MXN,USD',
+            'tipo'   => 'nullable|in:basico,avanzado',
 
             // Paso 2 — productos
             'fee_porcentaje'            => 'nullable|numeric|min:0|max:100',
             'descuento'                 => 'nullable|numeric|min:0|max:100',
             'productos'                 => 'required|array|min:1',
             'productos.*.id'                  => 'nullable|exists:productos,id',
-            'productos.*.nombre'              => 'required|string|max:150',
+            'productos.*.nombre'              => 'required|string|max:2000',
             'productos.*.costo'               => 'nullable|numeric|min:0',
             'productos.*.aumento_porcentaje'  => 'nullable|numeric|min:0',
             'productos.*.cantidad'            => 'required|integer|min:1',
             'productos.*.precio'              => 'required|numeric|min:0',
             'productos.*.imagen'              => 'nullable|image|max:5120',
+            'productos.*.grupo'               => 'nullable|string|max:100',
+            'productos.*.dia'                 => 'nullable|string|max:50',
+            'productos.*.horario'             => 'nullable|string|max:50',
+            'productos.*.lugar'               => 'nullable|string|max:150',
 
             // Paso 3 — entrega y condiciones
             'tiempo_entrega' => 'nullable|string|max:100',
             'condiciones'    => 'nullable|string',
             'valida_hasta'   => 'nullable|date|after:today',
             'notas'          => 'nullable|string',
+
+            // Hospedajes
+            'hospedajes'                        => 'nullable|array',
+            'hospedajes.*.hospedaje_id'         => 'nullable|exists:hospedajes,id',
+            'hospedajes.*.nombre'               => 'required_with:hospedajes|string|max:150',
+            'hospedajes.*.checkin'              => 'nullable|string|max:50',
+            'hospedajes.*.checkout'             => 'nullable|string|max:50',
+            'hospedajes.*.noches'               => 'required_with:hospedajes|integer|min:0',
+            'hospedajes.*.habitaciones'         => 'required_with:hospedajes|integer|min:0',
+            'hospedajes.*.costo_unitario'       => 'nullable|numeric|min:0',
+            'hospedajes.*.ish_porcentaje'       => 'nullable|numeric|min:0|max:100',
+            'hospedajes.*.iva_porcentaje'       => 'nullable|numeric|min:0|max:100',
+            'hospedajes.*.resort_fee'           => 'nullable|numeric|min:0',
+            'hospedajes.*.bell_boys'            => 'nullable|numeric|min:0',
+            'hospedajes.*.camaristas'           => 'nullable|numeric|min:0',
+            'hospedajes.*.cargos_adicionales'   => 'nullable|array',
+            'hospedajes.*.notas'                => 'nullable|string',
         ]);
 
         $clienteId = $this->resolverClienteId($validated);
@@ -83,6 +106,8 @@ class CotizacionController extends Controller
             'created_by'        => auth()->id(),
             'firmante_id'       => auth()->id(),
             'origen'            => $validated['origen'] ?? 'dreamroll',
+            'moneda'            => $validated['moneda'] ?? 'MXN',
+            'tipo'              => $validated['tipo'] ?? 'basico',
             'cliente_prefijo'   => $validated['cliente_prefijo'] ?? null,
             'cliente_nombre'    => $validated['cliente_nombre'],
             'cliente_apellidos' => $validated['cliente_apellidos'] ?? null,
@@ -108,6 +133,10 @@ class CotizacionController extends Controller
 
             $cotizacion->productos()->create([
                 'producto_id'        => $productoId,
+                'grupo'              => $item['grupo'] ?? null,
+                'dia'                => $item['dia'] ?? null,
+                'horario'            => $item['horario'] ?? null,
+                'lugar'              => $item['lugar'] ?? null,
                 'costo'              => $item['costo'] ?? null,
                 'aumento_porcentaje' => $item['aumento_porcentaje'] ?? null,
                 'cantidad'           => $item['cantidad'],
@@ -115,7 +144,26 @@ class CotizacionController extends Controller
             ]);
         }
 
-        $cotizacion->load('productos');
+        foreach ($validated['hospedajes'] ?? [] as $item) {
+            $cotizacion->hospedajes()->create([
+                'hospedaje_id'        => $item['hospedaje_id'] ?? null,
+                'nombre'              => $item['nombre'],
+                'checkin'             => $item['checkin'] ?? null,
+                'checkout'            => $item['checkout'] ?? null,
+                'noches'              => $item['noches'],
+                'habitaciones'        => $item['habitaciones'],
+                'costo_unitario'      => $item['costo_unitario'],
+                'ish_porcentaje'      => $item['ish_porcentaje'] ?? null,
+                'iva_porcentaje'      => $item['iva_porcentaje'] ?? null,
+                'resort_fee'          => $item['resort_fee'] ?? null,
+                'bell_boys'           => $item['bell_boys'] ?? null,
+                'camaristas'          => $item['camaristas'] ?? null,
+                'cargos_adicionales'  => $item['cargos_adicionales'] ?? null,
+                'notas'               => $item['notas'] ?? null,
+            ]);
+        }
+
+        $cotizacion->load('productos', 'hospedajes');
         $cotizacion->recalcular();
 
         return redirect()->route('cotizaciones.show', $cotizacion)
@@ -124,7 +172,7 @@ class CotizacionController extends Controller
 
     public function show(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto', 'creador', 'firmante');
+        $cotizacion->load('productos.producto', 'hospedajes', 'creador', 'firmante');
         $usuarios = \App\Models\User::orderBy('name')->get();
 
         return view('cotizaciones.show', compact('cotizacion', 'usuarios'));
@@ -132,7 +180,7 @@ class CotizacionController extends Controller
 
     public function edit(Cotizacion $cotizacion)
     {
-        $cotizacion->load('productos.producto', 'cliente');
+        $cotizacion->load('productos.producto', 'hospedajes', 'cliente');
 
         return view('cotizaciones.edit', compact('cotizacion'));
     }
@@ -154,20 +202,43 @@ class CotizacionController extends Controller
             'cliente_email'      => 'nullable|email|max:150',
             'cliente_direccion'  => 'nullable|string|max:255',
             'origen'             => 'nullable|in:dreamroll,latimer',
+            'moneda'             => 'nullable|in:MXN,USD',
+            'tipo'               => 'nullable|in:basico,avanzado',
             'fee_porcentaje'                  => 'nullable|numeric|min:0|max:100',
             'descuento'                       => 'nullable|numeric|min:0|max:100',
             'productos'                       => 'required|array|min:1',
             'productos.*.id'                  => 'nullable|exists:productos,id',
-            'productos.*.nombre'              => 'required|string|max:150',
+            'productos.*.nombre'              => 'required|string|max:2000',
             'productos.*.costo'               => 'nullable|numeric|min:0',
             'productos.*.aumento_porcentaje'  => 'nullable|numeric|min:0',
             'productos.*.cantidad'            => 'required|integer|min:1',
             'productos.*.precio'              => 'required|numeric|min:0',
             'productos.*.imagen'              => 'nullable|image|max:5120',
+            'productos.*.grupo'               => 'nullable|string|max:100',
+            'productos.*.dia'                 => 'nullable|string|max:50',
+            'productos.*.horario'             => 'nullable|string|max:50',
+            'productos.*.lugar'               => 'nullable|string|max:150',
             'tiempo_entrega' => 'nullable|string|max:100',
             'condiciones'    => 'nullable|string',
             'valida_hasta'   => 'nullable|date',
             'notas'          => 'nullable|string',
+
+            // Hospedajes
+            'hospedajes'                        => 'nullable|array',
+            'hospedajes.*.hospedaje_id'         => 'nullable|exists:hospedajes,id',
+            'hospedajes.*.nombre'               => 'required_with:hospedajes|string|max:150',
+            'hospedajes.*.checkin'              => 'nullable|string|max:50',
+            'hospedajes.*.checkout'             => 'nullable|string|max:50',
+            'hospedajes.*.noches'               => 'required_with:hospedajes|integer|min:0',
+            'hospedajes.*.habitaciones'         => 'required_with:hospedajes|integer|min:0',
+            'hospedajes.*.costo_unitario'       => 'nullable|numeric|min:0',
+            'hospedajes.*.ish_porcentaje'       => 'nullable|numeric|min:0|max:100',
+            'hospedajes.*.iva_porcentaje'       => 'nullable|numeric|min:0|max:100',
+            'hospedajes.*.resort_fee'           => 'nullable|numeric|min:0',
+            'hospedajes.*.bell_boys'            => 'nullable|numeric|min:0',
+            'hospedajes.*.camaristas'           => 'nullable|numeric|min:0',
+            'hospedajes.*.cargos_adicionales'   => 'nullable|array',
+            'hospedajes.*.notas'                => 'nullable|string',
         ]);
 
         $clienteId = $this->resolverClienteId($validated, $cotizacion->cliente_id);
@@ -183,6 +254,8 @@ class CotizacionController extends Controller
             'cliente_email'     => $validated['cliente_email'] ?? null,
             'cliente_direccion' => $validated['cliente_direccion'] ?? null,
             'origen'            => $validated['origen'] ?? $cotizacion->origen,
+            'moneda'            => $validated['moneda'] ?? $cotizacion->moneda,
+            'tipo'              => $validated['tipo'] ?? $cotizacion->tipo,
             'fee_porcentaje'    => $validated['fee_porcentaje'] ?? 10,
             'descuento'         => $validated['descuento'] ?? 0,
             'tiempo_entrega'    => $validated['tiempo_entrega'] ?? null,
@@ -192,12 +265,17 @@ class CotizacionController extends Controller
         ]);
 
         $cotizacion->productos()->delete();
+        $cotizacion->hospedajes()->delete();
 
         foreach ($request->input('productos') as $index => $item) {
             $productoId = $this->resolverProductoId($item, $request->file("productos.{$index}.imagen"));
 
             $cotizacion->productos()->create([
                 'producto_id'        => $productoId,
+                'grupo'              => $item['grupo'] ?? null,
+                'dia'                => $item['dia'] ?? null,
+                'horario'            => $item['horario'] ?? null,
+                'lugar'              => $item['lugar'] ?? null,
                 'costo'              => $item['costo'] ?? null,
                 'aumento_porcentaje' => $item['aumento_porcentaje'] ?? null,
                 'cantidad'           => $item['cantidad'],
@@ -205,7 +283,26 @@ class CotizacionController extends Controller
             ]);
         }
 
-        $cotizacion->load('productos');
+        foreach ($validated['hospedajes'] ?? [] as $item) {
+            $cotizacion->hospedajes()->create([
+                'hospedaje_id'        => $item['hospedaje_id'] ?? null,
+                'nombre'              => $item['nombre'],
+                'checkin'             => $item['checkin'] ?? null,
+                'checkout'            => $item['checkout'] ?? null,
+                'noches'              => $item['noches'],
+                'habitaciones'        => $item['habitaciones'],
+                'costo_unitario'      => $item['costo_unitario'],
+                'ish_porcentaje'      => $item['ish_porcentaje'] ?? null,
+                'iva_porcentaje'      => $item['iva_porcentaje'] ?? null,
+                'resort_fee'          => $item['resort_fee'] ?? null,
+                'bell_boys'           => $item['bell_boys'] ?? null,
+                'camaristas'          => $item['camaristas'] ?? null,
+                'cargos_adicionales'  => $item['cargos_adicionales'] ?? null,
+                'notas'               => $item['notas'] ?? null,
+            ]);
+        }
+
+        $cotizacion->load('productos', 'hospedajes');
         $cotizacion->recalcular();
 
         return redirect()->route('cotizaciones.show', $cotizacion)

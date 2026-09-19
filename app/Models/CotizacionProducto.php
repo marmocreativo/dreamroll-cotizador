@@ -14,6 +14,10 @@ class CotizacionProducto extends Model
     protected $fillable = [
         'cotizacion_id',
         'producto_id',
+        'grupo',
+        'dia',
+        'horario',
+        'lugar',
         'costo',
         'aumento_porcentaje',
         'cantidad',
@@ -30,18 +34,16 @@ class CotizacionProducto extends Model
         'cantidad'           => 'integer',
     ];
 
+    /**
+     * NOTA: este modelo ya NO recalcula automáticamente la cotización al
+     * guardarse/eliminarse (se quitó por rendimiento en imports masivos).
+     * Quien cree/edite/borre estos registros debe llamar
+     * $cotizacion->recalcular() manualmente al terminar.
+     */
     protected static function booted(): void
     {
         static::saving(function (CotizacionProducto $item) {
             $item->subtotal = $item->cantidad * $item->precio_unitario;
-        });
-
-        static::saved(function (CotizacionProducto $item) {
-            $item->cotizacion->recalcular();
-        });
-
-        static::deleted(function (CotizacionProducto $item) {
-            $item->cotizacion->recalcular();
         });
     }
 

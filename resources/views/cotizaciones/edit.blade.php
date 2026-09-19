@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div x-data="cotizacionWizard()" class="max-w-4xl">
+    <div x-data="cotizacionWizard()" class="max-w-full">
 
         {{-- Stepper --}}
         <div class="mb-8 flex items-center">
@@ -44,6 +44,17 @@
             </template>
         </div>
 
+        @if ($errors->any())
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p class="text-sm font-medium text-red-700">El servidor rechazó la cotización:</p>
+                <ul class="mt-1 list-disc pl-5 text-sm text-red-600">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Alertas de validación --}}
         <div x-show="errores.length > 0" x-cloak class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
             <p class="text-sm font-medium text-red-700">Corrige lo siguiente antes de continuar:</p>
@@ -70,6 +81,30 @@
                     </select>
                     <p class="mt-1 text-xs text-gray-400">
                         Define la identidad (logo, colores y textos) del PDF y correo enviados al cliente.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Moneda</label>
+                    <select name="moneda" x-model="moneda"
+                            class="w-full max-w-xs rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="MXN">MXN</option>
+                        <option value="USD">USD</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">
+                        Solo informativo, no afecta los cálculos de la cotización.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Tipo de cotización</label>
+                    <select name="tipo" x-model="tipo" @change="calcularTotales"
+                            class="w-full max-w-xs rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="basico">Básica</option>
+                        <option value="avanzado">Avanzada</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">
+                        Básica: sin hospedajes ni columnas de día/horario/lugar. Avanzada: incluye todo.
                     </p>
                 </div>
 
@@ -212,6 +247,44 @@
             <div x-show="paso === 2" x-cloak class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
                 <p class="text-sm font-medium text-gray-700">Productos/Servicios</p>
 
+                <div class="rounded-lg border border-dashed border-gray-300 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Importar desde Excel</p>
+                            <p class="text-xs text-gray-400">Sube el Excel de cotización y se cargan los productos y hospedajes automáticamente.</p>
+                            <a href="{{ asset('plantilla-cotizacion.xlsx') }}" download
+                               class="mt-1 inline-block text-xs font-medium text-secondary hover:underline">
+                                Descargar plantilla de ejemplo
+                            </a>
+                        </div>
+                        <button type="button" @click="$refs.excelInput.click()"
+                                :disabled="importandoExcel"
+                                class="shrink-0 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50">
+                            <span x-show="!importandoExcel">Subir Excel</span>
+                            <span x-show="importandoExcel">Leyendo...</span>
+                        </button>
+                        <input type="file" x-ref="excelInput" accept=".xlsx,.xls" class="hidden"
+                               @change="importarExcel($event)">
+                    </div>
+
+                    <div x-show="advertenciasExcel.length > 0" x-cloak class="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                        <p class="text-xs font-medium text-amber-700">Advertencias al leer el archivo:</p>
+                        <ul class="mt-1 list-disc pl-4 text-xs text-amber-600">
+                            <template x-for="a in advertenciasExcel" :key="a">
+                                <li x-text="a"></li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <p x-show="errorExcel" x-text="errorExcel" class="mt-2 text-xs text-red-500"></p>
+
+                    <p x-show="resumenExcel" x-cloak class="mt-2 text-xs text-emerald-600">
+                        Se importaron <span x-text="resumenExcel?.total_productos"></span> productos y
+                        <span x-text="resumenExcel?.total_hospedajes"></span> hospedajes.
+                        Revísalos antes de continuar.
+                    </p>
+                </div>
+
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar producto o servicio</label>
                     <div class="flex gap-2">
@@ -227,11 +300,38 @@
                     </div>
                 </div>
 
+                <div x-show="items.some(i => i.seleccionado)" x-cloak
+                     class="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                    <span class="text-xs font-medium text-gray-600" x-text="items.filter(i => i.seleccionado).length + ' seleccionados'"></span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-500">Aumento %</label>
+                        <input type="number" min="0" step="0.01" x-model.number="aumentoLote"
+                               class="w-20 rounded border border-gray-200 px-2 py-1 text-sm text-gray-900">
+                        <button type="button" @click="aplicarAumentoLote()"
+                                class="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors">
+                            Aplicar
+                        </button>
+                    </div>
+                    <button type="button" @click="borrarProductosSeleccionados()"
+                            class="ml-auto rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                        Borrar seleccionados
+                    </button>
+                </div>
+
                 <div class="overflow-hidden rounded-lg border border-gray-200">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-left">
                             <tr>
+                                <th class="px-3 py-2 w-8">
+                                    <input type="checkbox" :checked="items.length > 0 && items.every(i => i.seleccionado)"
+                                           @change="items.forEach(i => i.seleccionado = $event.target.checked)"
+                                           class="rounded border-gray-300">
+                                </th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-14">Img</th>
+                                <th x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-28">Grupo</th>
+                                <th x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-20">Día</th>
+                                <th x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-20">Horario</th>
+                                <th x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-28">Lugar</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Cantidad</th>
                                 <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Costo</th>
@@ -244,6 +344,9 @@
                         <tbody class="divide-y divide-gray-100">
                             <template x-for="(item, index) in items" :key="item.uid">
                                 <tr>
+                                    <td class="px-3 py-2">
+                                        <input type="checkbox" x-model="item.seleccionado" class="rounded border-gray-300">
+                                    </td>
                                     <td class="px-3 py-2">
                                         <div @click="abrirDialogFoto(index)"
                                              class="group relative block size-10 cursor-pointer overflow-hidden rounded border border-gray-200 bg-gray-50">
@@ -261,10 +364,34 @@
                                                :name="'productos['+index+'][imagen]'"
                                                @change="onFileSeleccionado($event, index)" />
                                     </td>
+                                    <td x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2">
+                                        <input type="text" x-model="item.grupo"
+                                               :name="'productos['+index+'][grupo]'"
+                                               placeholder="—"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-500" />
+                                    </td>
+                                    <td x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2">
+                                        <input type="text" x-model="item.dia"
+                                               :name="'productos['+index+'][dia]'"
+                                               placeholder="—"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-500" />
+                                    </td>
+                                    <td x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2">
+                                        <input type="text" x-model="item.horario"
+                                               :name="'productos['+index+'][horario]'"
+                                               placeholder="—"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-500" />
+                                    </td>
+                                    <td x-show="tipo === 'avanzado'" x-cloak class="px-3 py-2">
+                                        <input type="text" x-model="item.lugar"
+                                               :name="'productos['+index+'][lugar]'"
+                                               placeholder="—"
+                                               class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-500" />
+                                    </td>
                                     <td class="px-3 py-2">
-                                        <input type="text" x-model="item.nombre"
-                                               :name="'productos['+index+'][nombre]'"
-                                               class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        <textarea x-model="item.nombre" rows="2"
+                                                  :name="'productos['+index+'][nombre]'"
+                                                  class="w-full min-w-[180px] rounded border border-gray-200 px-2 py-1 text-sm text-gray-900"></textarea>
                                         <input type="hidden" :name="'productos['+index+'][id]'" :value="item.id ?? ''">
                                     </td>
                                     <td class="px-3 py-2">
@@ -302,7 +429,7 @@
                                 </tr>
                             </template>
                             <tr x-show="items.length === 0">
-                                <td colspan="8" class="px-3 py-8 text-center text-gray-400 text-sm">
+                                <td colspan="13" class="px-3 py-8 text-center text-gray-400 text-sm">
                                     Aún no has agregado productos.
                                 </td>
                             </tr>
@@ -310,17 +437,159 @@
                     </table>
                 </div>
 
+                <div x-show="tipo === 'avanzado'" x-cloak>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Buscar o agregar hospedaje</label>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="busquedaHospedaje"
+                               @keydown.enter.prevent="buscarHospedajes()"
+                               placeholder="Escribe el nombre y presiona Enter o Buscar..."
+                               autocomplete="off"
+                               class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                        <button type="button" @click="buscarHospedajes()"
+                                class="shrink-0 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <div x-show="tipo === 'avanzado' && hospedajes.length > 0" x-cloak>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Hospedajes</p>
+
+                    <div x-show="hospedajes.some(h => h.seleccionado)" x-cloak
+                         class="mb-2 flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                        <span class="text-xs font-medium text-gray-600" x-text="hospedajes.filter(h => h.seleccionado).length + ' seleccionados'"></span>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">ISH %</label>
+                            <input type="number" min="0" step="0.01" x-model.number="ishLote"
+                                   class="w-16 rounded border border-gray-200 px-2 py-1 text-sm text-gray-900">
+                            <label class="text-xs text-gray-500">IVA %</label>
+                            <input type="number" min="0" step="0.01" x-model.number="ivaLote"
+                                   class="w-16 rounded border border-gray-200 px-2 py-1 text-sm text-gray-900">
+                            <button type="button" @click="aplicarCargosLoteHospedajes()"
+                                    class="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors">
+                                Aplicar
+                            </button>
+                        </div>
+                        <button type="button" @click="borrarHospedajesSeleccionados()"
+                                class="ml-auto rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                            Borrar seleccionados
+                        </button>
+                    </div>
+
+                    <div class="overflow-hidden rounded-lg border border-gray-200">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-left">
+                                <tr>
+                                    <th class="px-3 py-2 w-8">
+                                        <input type="checkbox" :checked="hospedajes.length > 0 && hospedajes.every(h => h.seleccionado)"
+                                               @change="hospedajes.forEach(h => h.seleccionado = $event.target.checked)"
+                                               class="rounded border-gray-300">
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Nombre</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Check in</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Check out</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-16">Noches</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-16">Habs</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Costo unit.</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-20">ISH %</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-20">IVA %</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Resort Fee</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Bell Boys</th>
+                                    <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 w-24">Camaristas</th>
+                                    <th class="px-3 py-2 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="(h, index) in hospedajes" :key="h.uid">
+                                    <tr>
+                                        <td class="px-3 py-2">
+                                            <input type="checkbox" x-model="h.seleccionado" class="rounded border-gray-300">
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <textarea x-model="h.nombre" rows="2"
+                                                      :name="'hospedajes['+index+'][nombre]'"
+                                                      class="w-full min-w-[180px] rounded border border-gray-200 px-2 py-1 text-sm text-gray-900"></textarea>
+                                            <input type="hidden" :name="'hospedajes['+index+'][hospedaje_id]'" :value="h.hospedaje_id ?? ''">
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="text" x-model="h.checkin"
+                                                   :name="'hospedajes['+index+'][checkin]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="text" x-model="h.checkout"
+                                                   :name="'hospedajes['+index+'][checkout]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" x-model.number="h.noches" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][noches]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" x-model.number="h.habitaciones" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][habitaciones]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.costo_unitario" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][costo_unitario]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.ish_porcentaje" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][ish_porcentaje]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.iva_porcentaje" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][iva_porcentaje]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.resort_fee" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][resort_fee]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.bell_boys" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][bell_boys]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" min="0" step="0.01" x-model.number="h.camaristas" @input="calcularTotales"
+                                                   :name="'hospedajes['+index+'][camaristas]'"
+                                                   class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-gray-900" />
+                                        </td>
+                                        <td class="px-3 py-2 text-right">
+                                            <button type="button" @click="hospedajes.splice(index, 1); calcularTotales()" class="text-gray-400 hover:text-red-600 transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="flex justify-end">
                     <div class="w-full max-w-xs space-y-2 rounded-lg border border-gray-200 p-4">
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-500">Subtotal</span>
-                            <span class="font-medium text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
-                        </div>
                         <div class="flex items-center justify-between text-sm">
                             <label class="text-gray-500">Fee de agencia (%)</label>
                             <input type="number" name="fee_porcentaje" min="0" max="100" step="0.01"
                                    x-model.number="feePorcentaje" @input="calcularTotales"
                                    class="w-20 rounded border border-gray-200 px-2 py-1 text-right text-sm text-gray-900" />
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Subtotal</span>
+                            <span class="font-medium text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm" x-show="tipo === 'avanzado' && hospedajes.length > 0">
+                            <span class="text-gray-500">Subtotal hospedajes</span>
+                            <span class="font-medium text-gray-900">$<span x-text="subtotalHospedajes.toFixed(2)"></span></span>
                         </div>
                         <div class="flex items-center justify-between text-sm">
                             <label class="text-gray-500">Descuento (%)</label>
@@ -513,6 +782,58 @@
             </div>
         </div>
 
+        {{-- ── DIÁLOGO: Resultados de búsqueda de hospedaje ───────── --}}
+        <div x-show="mostrarDialogBusquedaHospedaje" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+             @keydown.escape.window="cerrarDialogBusquedaHospedaje()">
+            <div @click.outside="cerrarDialogBusquedaHospedaje()"
+                 class="w-full max-w-md rounded-xl bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <p class="text-sm font-semibold text-gray-900">
+                        Resultados para "<span x-text="terminoBuscadoHospedaje"></span>"
+                    </p>
+                    <button type="button" @click="cerrarDialogBusquedaHospedaje()" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="max-h-80 overflow-y-auto p-2">
+                    <template x-if="resultadosBusquedaHospedaje.length === 0">
+                        <div class="px-3 py-6 text-center">
+                            <p class="text-sm text-gray-500">No se encontraron hospedajes con ese nombre.</p>
+                        </div>
+                    </template>
+
+                    <template x-for="h in resultadosBusquedaHospedaje" :key="h.id">
+                        <button type="button" @click="seleccionarHospedajeBusqueda(h)"
+                                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-900" x-text="h.nombre"></p>
+                                <p class="text-xs text-gray-400" x-show="h.costo_unitario">$<span x-text="Number(h.costo_unitario).toFixed(2)"></span></p>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="border-t border-gray-100 p-4">
+                    <button type="button" @click="crearHospedajeNuevoDesdeBusqueda()"
+                            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span x-show="resultadosBusquedaHospedaje.length === 0">
+                            Agregar "<span x-text="terminoBuscadoHospedaje"></span>" como nuevo hospedaje
+                        </span>
+                        <span x-show="resultadosBusquedaHospedaje.length > 0">
+                            Crear hospedaje nuevo "<span x-text="terminoBuscadoHospedaje"></span>"
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         {{-- ── DIÁLOGO: Foto del producto ──────────────────────────── --}}
         <div x-show="mostrarDialogFoto" x-cloak
              class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -598,6 +919,11 @@
             return [
                 'uid' => $item->id,
                 'id' => $item->producto_id,
+                'seleccionado' => false,
+                'grupo' => $item->grupo,
+                'dia' => $item->dia,
+                'horario' => $item->horario,
+                'lugar' => $item->lugar,
                 'nombre' => $nombreProducto,
                 'cantidad' => $item->cantidad,
                 'costo' => $item->costo !== null ? (float) $item->costo : '',
@@ -608,7 +934,27 @@
             ];
         })->values();
 
+        $hospedajesData = $cotizacion->hospedajes->map(function ($h) {
+            return [
+                'uid' => $h->id,
+                'hospedaje_id' => $h->hospedaje_id,
+                'seleccionado' => false,
+                'nombre' => $h->nombre,
+                'checkin' => $h->checkin,
+                'checkout' => $h->checkout,
+                'noches' => $h->noches,
+                'habitaciones' => $h->habitaciones,
+                'costo_unitario' => $h->costo_unitario !== null ? (float) $h->costo_unitario : 0,
+                'ish_porcentaje' => $h->ish_porcentaje !== null ? (float) $h->ish_porcentaje : '',
+                'iva_porcentaje' => $h->iva_porcentaje !== null ? (float) $h->iva_porcentaje : '',
+                'resort_fee' => $h->resort_fee !== null ? (float) $h->resort_fee : '',
+                'bell_boys' => $h->bell_boys !== null ? (float) $h->bell_boys : '',
+                'camaristas' => $h->camaristas !== null ? (float) $h->camaristas : '',
+            ];
+        })->values();
+
         $siguienteUidValor = $cotizacion->productos->max('id') + 1;
+        $siguienteUidHospedajeValor = ($cotizacion->hospedajes->max('id') ?? 0) + 1;
     @endphp
 
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
@@ -621,6 +967,8 @@
                 quill: null,
 
                 origen: '{{ old('origen', $cotizacion->origen) }}',
+                moneda: '{{ old('moneda', $cotizacion->moneda ?? 'MXN') }}',
+                tipo: '{{ old('tipo', $cotizacion->tipo ?? 'basico') }}',
 
                 cliente: @json($clienteData),
                 clienteNuevoModo: false,
@@ -637,17 +985,34 @@
                 resultadosBusqueda: [],
                 mostrarDialogBusqueda: false,
 
+                busquedaHospedaje: '',
+                terminoBuscadoHospedaje: '',
+                resultadosBusquedaHospedaje: [],
+                mostrarDialogBusquedaHospedaje: false,
+
                 mostrarDialogFoto: false,
                 fotoEditIndex: null,
                 draggingFoto: false,
                 errorFoto: '',
 
                 items: @json($itemsData),
+                hospedajes: @json($hospedajesData),
                 siguienteUid: {{ $siguienteUidValor }},
+                siguienteUidHospedaje: {{ $siguienteUidHospedajeValor }},
+
+                aumentoLote: 0,
+                ishLote: 0,
+                ivaLote: 0,
+
+                importandoExcel: false,
+                errorExcel: '',
+                advertenciasExcel: [],
+                resumenExcel: null,
 
                 feePorcentaje: 10,
                 descuento: {{ $cotizacion->descuento }},
                 subtotal: 0,
+                subtotalHospedajes: 0,
                 iva: 0,
                 total: 0,
 
@@ -799,10 +1164,87 @@
                     this.busqueda = '';
                 },
 
+                async buscarHospedajes() {
+                    const termino = this.busquedaHospedaje.trim();
+                    if (termino.length < 2) return;
+
+                    this.terminoBuscadoHospedaje = termino;
+
+                    try {
+                        const res = await fetch(`{{ route('hospedajes.buscar') }}?q=${encodeURIComponent(termino)}`);
+                        this.resultadosBusquedaHospedaje = await res.json();
+                    } catch (e) {
+                        this.resultadosBusquedaHospedaje = [];
+                    }
+
+                    this.mostrarDialogBusquedaHospedaje = true;
+                },
+
+                cerrarDialogBusquedaHospedaje() {
+                    this.mostrarDialogBusquedaHospedaje = false;
+                },
+
+                seleccionarHospedajeBusqueda(h) {
+                    this.agregarHospedaje(h);
+                    this.cerrarDialogBusquedaHospedaje();
+                    this.busquedaHospedaje = '';
+                },
+
+                crearHospedajeNuevoDesdeBusqueda() {
+                    this.agregarHospedajeNuevo(this.terminoBuscadoHospedaje);
+                    this.cerrarDialogBusquedaHospedaje();
+                    this.busquedaHospedaje = '';
+                },
+
+                agregarHospedaje(h) {
+                    this.hospedajes.push({
+                        uid: this.siguienteUidHospedaje++,
+                        hospedaje_id: h.id,
+                        seleccionado: false,
+                        nombre: h.nombre,
+                        checkin: '',
+                        checkout: '',
+                        noches: 1,
+                        habitaciones: 1,
+                        costo_unitario: h.costo_unitario ?? 0,
+                        ish_porcentaje: '',
+                        iva_porcentaje: '',
+                        resort_fee: '',
+                        bell_boys: '',
+                        camaristas: '',
+                    });
+                    this.calcularTotales();
+                },
+
+                agregarHospedajeNuevo(nombre) {
+                    this.hospedajes.push({
+                        uid: this.siguienteUidHospedaje++,
+                        hospedaje_id: null,
+                        seleccionado: false,
+                        nombre: nombre,
+                        checkin: '',
+                        checkout: '',
+                        noches: 1,
+                        habitaciones: 1,
+                        costo_unitario: 0,
+                        ish_porcentaje: '',
+                        iva_porcentaje: '',
+                        resort_fee: '',
+                        bell_boys: '',
+                        camaristas: '',
+                    });
+                    this.calcularTotales();
+                },
+
                 agregarProducto(producto) {
                     this.items.push({
                         uid: this.siguienteUid++,
                         id: producto.id,
+                        seleccionado: false,
+                        grupo: '',
+                        dia: '',
+                        horario: '',
+                        lugar: '',
                         nombre: producto.nombre,
                         cantidad: 1,
                         costo: producto.costo ?? '',
@@ -818,6 +1260,11 @@
                     this.items.push({
                         uid: this.siguienteUid++,
                         id: null,
+                        seleccionado: false,
+                        grupo: '',
+                        dia: '',
+                        horario: '',
+                        lugar: '',
                         nombre: nombre,
                         cantidad: 1,
                         costo: '',
@@ -842,13 +1289,146 @@
                     this.calcularTotales();
                 },
 
+                aplicarAumentoLote() {
+                    this.items.forEach((item, index) => {
+                        if (!item.seleccionado) return;
+                        item.aumento_porcentaje = this.aumentoLote;
+                        this.calcularPrecioItem(index);
+                    });
+                },
+
+                borrarProductosSeleccionados() {
+                    this.items = this.items.filter(i => !i.seleccionado);
+                    this.calcularTotales();
+                },
+
+                aplicarCargosLoteHospedajes() {
+                    this.hospedajes.forEach(h => {
+                        if (!h.seleccionado) return;
+                        h.ish_porcentaje = this.ishLote;
+                        h.iva_porcentaje = this.ivaLote;
+                    });
+                    this.calcularTotales();
+                },
+
+                borrarHospedajesSeleccionados() {
+                    this.hospedajes = this.hospedajes.filter(h => !h.seleccionado);
+                    this.calcularTotales();
+                },
+
+                async importarExcel(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    this.importandoExcel = true;
+                    this.errorExcel = '';
+                    this.advertenciasExcel = [];
+                    this.resumenExcel = null;
+
+                    const formData = new FormData();
+                    formData.append('excel', file);
+
+                    try {
+                        const res = await fetch(`{{ route('cotizaciones.importar-excel') }}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                                    || document.querySelector('input[name="_token"]').value,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => null);
+                            this.errorExcel = data?.message || 'No se pudo leer el archivo.';
+                            return;
+                        }
+
+                        const data = await res.json();
+
+                        data.productos.forEach(p => {
+                            this.items.push({
+                                uid: this.siguienteUid++,
+                                id: null,
+                                seleccionado: false,
+                                grupo: p.grupo || '',
+                                dia: p.dia || '',
+                                horario: p.horario || '',
+                                lugar: p.lugar || '',
+                                nombre: p.concepto || '',
+                                cantidad: p.cantidad || 1,
+                                costo: p.precio_unitario || 0,
+                                aumento_porcentaje: 0,
+                                precio: p.precio_unitario || 0,
+                                imagen_url: null,
+                                imagenPreview: null,
+                            });
+                        });
+
+                        data.hospedajes.forEach(h => {
+                            this.hospedajes.push({
+                                uid: this.siguienteUidHospedaje++,
+                                hospedaje_id: null,
+                                seleccionado: false,
+                                nombre: h.nombre || '',
+                                checkin: h.checkin || '',
+                                checkout: h.checkout || '',
+                                noches: h.noches || 0,
+                                habitaciones: h.habitaciones || 0,
+                                costo_unitario: h.costo_unitario || 0,
+                                ish_porcentaje: h.ish_porcentaje || '',
+                                iva_porcentaje: h.iva_porcentaje || '',
+                                resort_fee: h.resort_fee || '',
+                                bell_boys: h.bell_boys || '',
+                                camaristas: h.camaristas || '',
+                            });
+                        });
+
+                        this.advertenciasExcel = data.advertencias || [];
+                        this.resumenExcel = data.resumen;
+
+                        this.calcularTotales();
+                    } catch (e) {
+                        this.errorExcel = 'Ocurrió un error al subir el archivo.';
+                    } finally {
+                        this.importandoExcel = false;
+                        event.target.value = '';
+                    }
+                },
+
+                calcularTotalHospedaje(h) {
+                    const subtotal = (h.costo_unitario || 0) * (h.noches || 0) * (h.habitaciones || 0);
+                    const ish = subtotal * ((h.ish_porcentaje || 0) / 100);
+                    const iva = subtotal * ((h.iva_porcentaje || 0) / 100);
+                    const resortFee = (h.resort_fee || 0) * (h.habitaciones || 0) * (h.noches || 0);
+                    const bellBoys = (h.bell_boys || 0) * (h.habitaciones || 0);
+                    const camaristas = (h.camaristas || 0) * (h.habitaciones || 0) * (h.noches || 0);
+                    return subtotal + ish + iva + resortFee + bellBoys + camaristas;
+                },
+
                 calcularTotales() {
                     this.subtotal = this.items.reduce((sum, item) => sum + ((item.cantidad || 0) * (item.precio || 0)), 0);
-                    const fee = this.subtotal * ((this.feePorcentaje || 0) / 100);
-                    const subtotalConFee = this.subtotal + fee;
-                    const conDescuento = subtotalConFee - (subtotalConFee * ((this.descuento || 0) / 100));
-                    this.iva = conDescuento * 0.16;
-                    this.total = conDescuento + this.iva;
+                    this.subtotalHospedajes = this.hospedajes.reduce((sum, h) => sum + this.calcularTotalHospedaje(h), 0);
+
+                    if (this.tipo === 'basico') {
+                        const feeAgencia = this.subtotal * ((this.feePorcentaje || 0) / 100);
+                        const base = this.subtotal + feeAgencia;
+                        const descuentoMonto = base * ((this.descuento || 0) / 100);
+                        const baseConDescuento = base - descuentoMonto;
+                        this.iva = baseConDescuento * 0.16;
+                        this.total = baseConDescuento + this.iva;
+                        return;
+                    }
+
+                    this.iva = this.subtotal * 0.16;
+
+                    const baseFee = this.subtotal + this.iva + this.subtotalHospedajes;
+                    const feeAgencia = baseFee * ((this.feePorcentaje || 0) / 100);
+                    const baseConFee = baseFee + feeAgencia;
+                    const descuentoMonto = baseConFee * ((this.descuento || 0) / 100);
+
+                    this.total = baseConFee - descuentoMonto;
                 },
 
                 abrirDialogFoto(index) {
@@ -1033,8 +1613,8 @@
                             if (!item.nombre || !item.nombre.trim()) {
                                 this.errores.push(`El producto #${i + 1} necesita un nombre.`);
                             }
-                            if (item.nombre && item.nombre.length > 150) {
-                                this.errores.push(`El nombre del producto #${i + 1} es demasiado largo (${item.nombre.length}/150). Revisa si pegaste texto de más desde Word.`);
+                            if (item.nombre && item.nombre.length > 2000) {
+                                this.errores.push(`El nombre del producto #${i + 1} es demasiado largo (${item.nombre.length}/2000). Revisa si pegaste texto de más desde Word.`);
                             }
                             if (!item.cantidad || item.cantidad < 1) {
                                 this.errores.push(`El producto #${i + 1} necesita una cantidad válida.`);

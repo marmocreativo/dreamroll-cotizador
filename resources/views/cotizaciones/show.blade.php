@@ -14,7 +14,12 @@
                      alt="{{ $cotizacion->origen === 'latimer' ? 'Latimer' : 'Dream Roll' }}"
                      class="h-9 w-auto object-contain" />
                 <div>
-                    <h1 class="text-2xl font-semibold text-secondary">{{ $cotizacion->folio }}</h1>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-2xl font-semibold text-secondary">{{ $cotizacion->folio }}</h1>
+                        <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            {{ $cotizacion->moneda ?? 'MXN' }}
+                        </span>
+                    </div>
                     <p class="text-sm text-gray-500">Creada el {{ $cotizacion->created_at->format('d/m/Y H:i') }}</p>
                 </div>
             </div>
@@ -81,6 +86,11 @@
                             <thead class="bg-gray-50 text-left">
                                 <tr>
                                     <th class="px-3 py-2 w-14"></th>
+                                    @if ($cotizacion->tipo === 'avanzado')
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Día</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Horario</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Lugar</th>
+                                    @endif
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Producto/Servicio</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Cant.</th>
                                     <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Costo</th>
@@ -90,57 +100,122 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                @foreach($cotizacion->productos as $item)
-                                    <tr>
-                                        <td class="px-3 py-2">
-                                            @if($item->producto?->imagen_url)
-                                                <img src="{{ $item->producto->imagen_url }}"
-                                                     alt="{{ $item->producto->nombre }}"
-                                                     class="size-10 rounded object-cover border border-gray-200" />
-                                            @else
-                                                <div class="flex size-10 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-300">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 15h18M2.25 4.5h19.5M4.5 4.5v15h15v-15" />
-                                                    </svg>
-                                                </div>
-                                            @endif
+                                @foreach($cotizacion->productos->groupBy(fn($item) => $item->grupo ?: 'Sin grupo') as $nombreGrupo => $itemsGrupo)
+                                    <tr class="bg-gray-50">
+                                        <td colspan="10" class="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {{ $nombreGrupo }}
                                         </td>
-                                        <td class="px-3 py-2 text-gray-900">
-                                            {{ $item->producto->nombre ?? 'Producto eliminado' }}
-                                        </td>
-                                        <td class="px-3 py-2 text-gray-600">{{ $item->cantidad }}</td>
-                                        <td class="px-3 py-2 text-gray-600">{{ $item->costo !== null ? '$'.number_format($item->costo, 2) : '—' }}</td>
-                                        <td class="px-3 py-2 text-gray-600">{{ $item->aumento_porcentaje !== null ? number_format($item->aumento_porcentaje, 2).'%' : '—' }}</td>
-                                        <td class="px-3 py-2 text-gray-600">${{ number_format($item->precio_unitario, 2) }}</td>
-                                        <td class="px-3 py-2 font-medium text-gray-900">${{ number_format($item->subtotal, 2) }}</td>
                                     </tr>
+                                    @foreach($itemsGrupo as $item)
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                @if($item->producto?->imagen_url)
+                                                    <img src="{{ $item->producto->imagen_url }}"
+                                                         alt="{{ $item->producto->nombre }}"
+                                                         class="size-10 rounded object-cover border border-gray-200" />
+                                                @else
+                                                    <div class="flex size-10 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-300">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 15h18M2.25 4.5h19.5M4.5 4.5v15h15v-15" />
+                                                        </svg>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            @if ($cotizacion->tipo === 'avanzado')
+                                                <td class="px-3 py-2 text-gray-500 text-xs">{{ $item->dia ?: '—' }}</td>
+                                                <td class="px-3 py-2 text-gray-500 text-xs">{{ $item->horario ?: '—' }}</td>
+                                                <td class="px-3 py-2 text-gray-500 text-xs">{{ $item->lugar ?: '—' }}</td>
+                                            @endif
+                                            <td class="px-3 py-2 text-gray-900 whitespace-pre-line">
+                                                {{ $item->producto->nombre ?? 'Producto eliminado' }}
+                                            </td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $item->cantidad }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $item->costo !== null ? '$'.number_format($item->costo, 2) : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $item->aumento_porcentaje !== null ? number_format($item->aumento_porcentaje, 2).'%' : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">${{ number_format($item->precio_unitario, 2) }}</td>
+                                            <td class="px-3 py-2 font-medium text-gray-900">${{ number_format($item->subtotal, 2) }}</td>
+                                        </tr>
+                                    @endforeach
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
 
+                    @if($cotizacion->tipo === 'avanzado' && $cotizacion->hospedajes->isNotEmpty())
+                        <p class="mb-3 mt-6 text-sm font-medium text-gray-700">Hospedajes</p>
+                        <div class="overflow-hidden rounded-lg border border-gray-200">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 text-left">
+                                    <tr>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Nombre</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Check in</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Check out</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Noches</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Habs</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Costo unit.</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">ISH %</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">IVA %</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Resort Fee</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Bell Boys</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Camaristas</th>
+                                        <th class="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach($cotizacion->hospedajes as $h)
+                                        <tr>
+                                            <td class="px-3 py-2 text-gray-900 whitespace-pre-line">{{ $h->nombre }}</td>
+                                            <td class="px-3 py-2 text-gray-600 text-xs">{{ $h->checkin ?: '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600 text-xs">{{ $h->checkout ?: '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->noches }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->habitaciones }}</td>
+                                            <td class="px-3 py-2 text-gray-600">${{ number_format($h->costo_unitario, 2) }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->ish_porcentaje !== null ? number_format($h->ish_porcentaje, 2).'%' : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->iva_porcentaje !== null ? number_format($h->iva_porcentaje, 2).'%' : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->resort_fee !== null ? '$'.number_format($h->resort_fee, 2) : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->bell_boys !== null ? '$'.number_format($h->bell_boys, 2) : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-600">{{ $h->camaristas !== null ? '$'.number_format($h->camaristas, 2) : '—' }}</td>
+                                            <td class="px-3 py-2 font-medium text-gray-900">${{ number_format($h->total, 2) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+
+                    @php
+                        $totalProductos = $cotizacion->productos->sum('subtotal');
+                        $totalHospedajes = $cotizacion->hospedajes->sum('total');
+                        $esBasico = $cotizacion->tipo === 'basico';
+
+                        $descuentoMontoShow = $esBasico
+                            ? ($totalProductos + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100)
+                            : ($totalProductos + $cotizacion->iva + $totalHospedajes + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100);
+                    @endphp
                     <div class="mt-4 flex justify-end">
                         <div class="w-full max-w-xs space-y-2 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Importe productos</span>
-                                <span class="text-gray-900">${{ number_format($cotizacion->subtotal, 2) }}</span>
-                            </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-500">Fee de agencia ({{ number_format($cotizacion->fee_porcentaje, 2) }}%)</span>
                                 <span class="text-gray-900">${{ number_format($cotizacion->fee_agencia, 2) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-500">Subtotal</span>
-                                <span class="text-gray-900">${{ number_format($cotizacion->subtotal + $cotizacion->fee_agencia, 2) }}</span>
+                                <span class="text-gray-900">${{ number_format($totalProductos, 2) }}</span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Descuento ({{ $cotizacion->descuento }}%)</span>
-                                <span class="text-gray-900">-${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) * $cotizacion->descuento / 100, 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Importe con descuento</span>
-                                <span class="text-gray-900">${{ number_format(($cotizacion->subtotal + $cotizacion->fee_agencia) - (($cotizacion->subtotal + $cotizacion->fee_agencia) * $cotizacion->descuento / 100), 2) }}</span>
-                            </div>
+                            @if(!$esBasico && $cotizacion->hospedajes->isNotEmpty())
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-500">Subtotal hospedajes</span>
+                                    <span class="text-gray-900">${{ number_format($totalHospedajes, 2) }}</span>
+                                </div>
+                            @endif
+                            @if($cotizacion->descuento > 0)
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-500">Descuento ({{ $cotizacion->descuento }}%)</span>
+                                    <span class="text-gray-900">
+                                        -${{ number_format($descuentoMontoShow, 2) }}
+                                    </span>
+                                </div>
+                            @endif
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-500">IVA (16%)</span>
                                 <span class="text-gray-900">${{ number_format($cotizacion->iva, 2) }}</span>

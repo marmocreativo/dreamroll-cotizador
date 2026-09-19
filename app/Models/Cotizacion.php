@@ -16,6 +16,8 @@ class Cotizacion extends Model
         'created_by',
         'firmante_id',
         'origen',
+        'moneda',
+        'tipo',
         'cliente_prefijo',
         'cliente_nombre',
         'cliente_apellidos',
@@ -72,6 +74,11 @@ class Cotizacion extends Model
         return $this->hasMany(CotizacionProducto::class);
     }
 
+    public function hospedajes(): HasMany
+    {
+        return $this->hasMany(CotizacionHospedaje::class);
+    }
+
     public function getClienteNombreCompletoAttribute(): string
     {
         return collect([$this->cliente_prefijo, $this->cliente_nombre, $this->cliente_apellidos])
@@ -81,18 +88,52 @@ class Cotizacion extends Model
 
     public function recalcular(): void
     {
-        $subtotal         = $this->productos->sum('subtotal');
-        $feeAgencia       = $subtotal * (($this->fee_porcentaje ?? 0) / 100);
-        $baseConFee       = $subtotal + $feeAgencia;
-        $descuento        = $baseConFee * ($this->descuento / 100);
-        $baseConDescuento = $baseConFee - $descuento;
-        $iva              = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
+        if ($this->tipo === 'basico') {
+            $this->recalcularBasico();
+            return;
+        }
+
+        $subtotalProductos = $this->productos->sum('subtotal');
+        $totalHospedajes   = $this->hospedajes->sum('total'); // ya incluye ISH+IVA+resort fee+bell boys+camaristas
+
+        $ivaProductos = $subtotalProductos * (self::IVA_PORCENTAJE / 100);
+
+        $baseFee    = $subtotalProductos + $ivaProductos + $totalHospedajes;
+        $feeAgencia = $baseFee * (($this->fee_porcentaje ?? 0) / 100);
+
+        $baseConFee = $baseFee + $feeAgencia;
+        $descuento  = $baseConFee * ($this->descuento / 100);
+        $total      = $baseConFee - $descuento;
+
+        $this->update([
+            'subtotal'    => $subtotalProductos + $totalHospedajes,
+            'fee_agencia' => $feeAgencia,
+            'iva'         => $ivaProductos,
+            'total'       => $total,
+        ]);
+    }
+
+    /**
+     * Cotización básica: Fee sobre subtotal, IVA sobre (subtotal + fee),
+     * total = fee + subtotal + iva. No aplica hospedajes ni descuento.
+     */
+    private function recalcularBasico(): void
+    {
+        $subtotal   = $this->productos->sum('subtotal');
+        $feeAgencia = $subtotal * (($this->fee_porcentaje ?? 0) / 100);
+
+        $base      = $subtotal + $feeAgencia;
+        $descuento = $base * (($this->descuento ?? 0) / 100);
+        $baseConDescuento = $base - $descuento;
+
+        $iva   = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
+        $total = $baseConDescuento + $iva;
 
         $this->update([
             'subtotal'    => $subtotal,
             'fee_agencia' => $feeAgencia,
             'iva'         => $iva,
-            'total'       => $baseConDescuento + $iva,
+            'total'       => $total,
         ]);
     }
 

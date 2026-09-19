@@ -8,6 +8,8 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\PortafolioController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CotizacionImportController;
+use App\Http\Controllers\HospedajeController;
 
 // ── Pública ───────────────────────────────────────────
 Route::get('/', fn() => view('welcome'))->name('welcome');
@@ -50,9 +52,17 @@ Route::middleware('auth')->group(function () {
     Route::get('productos/buscar', [ProductoController::class, 'buscar'])
         ->name('productos.buscar');
 
+    // Importación de cotización desde Excel (previsualización, no guarda)
+    Route::post('cotizaciones/importar-excel', [CotizacionImportController::class, 'previsualizar'])
+        ->name('cotizaciones.importar-excel');
+
     // Autocompletado de clientes para el wizard (paso 1)
     Route::get('clientes/buscar', [ClienteController::class, 'buscar'])
         ->name('clientes.buscar');
+
+    // Autocompletado de hospedajes para el wizard (paso 2)
+    Route::get('hospedajes/buscar', [HospedajeController::class, 'buscar'])
+        ->name('hospedajes.buscar');
 
     // Clientes
     Route::resource('clientes', ClienteController::class);
