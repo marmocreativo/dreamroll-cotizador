@@ -633,7 +633,7 @@
                         {!! old('condiciones', $cotizacion->condiciones ?? '') !!}
                     </div>
                     <!-- Este input hidden es el que realmente se manda en el submit -->
-                    <input type="hidden" name="condiciones" id="condiciones-input">
+                    <input type="hidden" name="condiciones__b64" id="condiciones-input">
                 </div>
 
                 <div>
@@ -1049,11 +1049,19 @@
 
                 // Sincroniza Quill al hidden input y valida antes de enviar
                 enviarFormulario(event) {
-                    document.querySelector('#condiciones-input').value = this.quill.root.innerHTML;
+                    document.querySelector('#condiciones-input').value = this.aBase64Utf8(this.quill.root.innerHTML);
 
                     if (!this.validarPaso(3)) {
                         event.preventDefault();
                     }
+                },
+
+                // Base64 compatible con UTF-8 (acentos, ñ, emojis). Evita que ModSecurity vea HTML en el POST.
+                aBase64Utf8(texto) {
+                    const bytes = new TextEncoder().encode(texto ?? '');
+                    let binario = '';
+                    bytes.forEach(b => binario += String.fromCharCode(b));
+                    return btoa(binario);
                 },
 
                 limpiarTextoWord(texto) {
