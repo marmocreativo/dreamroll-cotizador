@@ -27,7 +27,7 @@ class CotizacionMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Cotización ' . $this->cotizacion->folio,
+            subject: 'Cotización ' . $this->cotizacion->folio_principal,
         );
     }
 
@@ -57,7 +57,7 @@ class CotizacionMail extends Mailable
         return [
             Attachment::fromData(
                 fn () => $pdf->output(),
-                $this->cotizacion->folio . '.pdf'
+                $this->cotizacion->folio_principal . '.pdf'
             )->withMime('application/pdf'),
         ];
     }

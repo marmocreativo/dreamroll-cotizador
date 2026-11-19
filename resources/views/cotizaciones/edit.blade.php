@@ -1,6 +1,6 @@
-<x-layouts::app :title="__('Editar cotización') . ' ' . $cotizacion->folio">
+<x-layouts::app :title="__('Editar cotización') . ' ' . $cotizacion->folio_principal">
 
-    <!-- CDN de Quill -->
+<!-- CDN de Quill -->
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 
     <div class="mb-6 flex items-center gap-4">
@@ -11,7 +11,7 @@
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-semibold text-secondary">Editar {{ $cotizacion->folio }}</h1>
+            <h1 class="text-2xl font-semibold text-secondary">Editar {{ $cotizacion->folio_principal }}</h1>
             <p class="text-sm text-gray-500">Actualiza los datos de la cotización</p>
         </div>
     </div>

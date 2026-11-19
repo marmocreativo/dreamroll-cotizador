@@ -85,10 +85,15 @@
         En atención a su amable solicitud, presentamos nuestra propuesta económica, queda de la siguiente manera:
     </p>
 
+    @php
+        // Más artículos = imágenes más chicas: hasta 5 → 100px, 6-7 → 50px, 8 o más → 26px.
+        $totalProductos = $cotizacion->productos->count();
+        $tamImagen = $totalProductos >= 8 ? 26 : ($totalProductos > 5 ? 50 : 100);
+    @endphp
     <table class="productos">
         <thead>
             <tr>
-                <th style="width: 32px;"></th>
+                <th style="width: {{ $tamImagen + 12 }}px;"></th>
                 <th>Descripción</th>
                 @if ($cotizacion->tipo === 'avanzado')
                     <th class="text-center">Día</th>
@@ -119,7 +124,7 @@
                 <tr>
                     <td>
                         @if ($imagenBase64)
-                            <img src="{{ $imagenBase64 }}" style="width: 26px; height: 26px; object-fit: cover; border-radius: 3px;" />
+                            <img src="{{ $imagenBase64 }}" style="width: {{ $tamImagen }}px; height: {{ $tamImagen }}px; object-fit: cover; border-radius: 3px;" />
                         @endif
                     </td>
                     <td>

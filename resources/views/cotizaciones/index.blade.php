@@ -6,7 +6,7 @@
             <p class="text-sm text-gray-500">Historial de cotizaciones generadas</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('cotizaciones.exportar', request()->only(['busqueda', 'estado'])) }}"
+            <a href="{{ route('cotizaciones.exportar', request()->only(['busqueda', 'estado', 'origen'])) }}"
                class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 Exportar Excel
             </a>
@@ -26,6 +26,15 @@
                    class="w-64 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
         </div>
         <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-500">Empresa</label>
+            <select name="origen"
+                    class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                <option value="">Todas</option>
+                <option value="dreamroll" @selected(request('origen') === 'dreamroll')>Dream Roll</option>
+                <option value="latimer" @selected(request('origen') === 'latimer')>Latimer</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-gray-500">Estado</label>
             <select name="estado"
                     class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
@@ -41,7 +50,7 @@
                 class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             Filtrar
         </button>
-        @if(request('busqueda') || request('estado'))
+        @if(request('busqueda') || request('estado') || request('origen'))
             <a href="{{ route('cotizaciones.index') }}"
                class="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
                 Limpiar
@@ -55,6 +64,7 @@
                 <tr>
                     <th class="px-4 py-3 w-12"></th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Folio</th>
+                    <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Folio Global</th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Cliente</th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Empresa</th>
                     <th class="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">Total</th>
@@ -82,7 +92,8 @@
                                  title="{{ $cotizacion->origen === 'latimer' ? 'Latimer' : 'Dream Roll' }}"
                                  class="h-6 w-auto object-contain" />
                         </td>
-                        <td class="px-4 py-3 font-medium text-gray-900">{{ $cotizacion->folio }}</td>
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ $cotizacion->folio_empresa ?: '—' }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500">{{ $cotizacion->folio }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $cotizacion->cliente_nombre_completo }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $cotizacion->cliente_empresa ?: '—' }}</td>
                         <td class="px-4 py-3 font-medium text-gray-900">${{ number_format($cotizacion->total, 2) }}</td>

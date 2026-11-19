@@ -629,7 +629,7 @@
                 <div>
                     <label for="condiciones" class="mb-1 block text-sm font-medium text-gray-700">Condiciones</label>
                     <div id="condiciones-editor" style="height: 150px; background: #fff;">
-                        {!! old('condiciones', "* Forma de pago 50% anticipo 50% contra entrega.<br>* Esta cotización tiene una vigencia de 15 días a partir de la fecha de elaboración.<br>* Tiempo de entrega: a definir una vez entregada la orden de compra y/o autorización.") !!}
+                        {!! old('condiciones', "* Forma de pago 50% anticipo 50% contra entrega.<br>* Tiempo de entrega: a definir una vez entregada la orden de compra y/o autorización.") !!}
                     </div>
                     <!-- Este input hidden es el que realmente se manda en el submit -->
                     <input type="hidden" name="condiciones__b64" id="condiciones-input">

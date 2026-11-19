@@ -17,13 +17,19 @@ class CotizacionController extends Controller
     public function index()
     {
         $cotizaciones = Cotizacion::when(request('busqueda'), fn($q, $v) =>
-                $q->where('folio', 'like', "%{$v}%")
-                ->orWhere('cliente_nombre', 'like', "%{$v}%")
-                ->orWhere('cliente_apellidos', 'like', "%{$v}%")
-                ->orWhere('cliente_empresa', 'like', "%{$v}%")
+                $q->where(fn($w) => $w
+                    ->where('folio_empresa', 'like', "%{$v}%")
+                    ->orWhere('folio', 'like', "%{$v}%")
+                    ->orWhere('cliente_nombre', 'like', "%{$v}%")
+                    ->orWhere('cliente_apellidos', 'like', "%{$v}%")
+                    ->orWhere('cliente_empresa', 'like', "%{$v}%")
+                )
             )
             ->when(request('estado'), fn($q, $v) =>
                 $q->where('estado', $v)
+            )
+            ->when(in_array(request('origen'), ['dreamroll', 'latimer'], true), fn($q) =>
+                $q->where('origen', request('origen'))
             )
             ->orderByDesc('created_at')
             ->paginate(20)
@@ -167,7 +173,7 @@ class CotizacionController extends Controller
         $cotizacion->recalcular();
 
         return redirect()->route('cotizaciones.show', $cotizacion)
-            ->with('success', "Cotización {$cotizacion->folio} creada correctamente.");
+            ->with('success', "Cotización {$cotizacion->folio_principal} creada correctamente.");
     }
 
     public function show(Cotizacion $cotizacion)
@@ -306,7 +312,7 @@ class CotizacionController extends Controller
         $cotizacion->recalcular();
 
         return redirect()->route('cotizaciones.show', $cotizacion)
-            ->with('success', "Cotización {$cotizacion->folio} actualizada correctamente.");
+            ->with('success', "Cotización {$cotizacion->folio_principal} actualizada correctamente.");
     }
 
     public function destroy(Cotizacion $cotizacion)
@@ -366,7 +372,7 @@ class CotizacionController extends Controller
     {
         $telefono = preg_replace('/\D/', '', $request->get('telefono', $cotizacion->cliente_telefono ?? ''));
 
-        $mensaje = "Hola {$cotizacion->cliente_nombre_completo}, te compartimos la cotización {$cotizacion->folio} "
+        $mensaje = "Hola {$cotizacion->cliente_nombre_completo}, te compartimos la cotización {$cotizacion->folio_principal} "
             . "por un total de $" . number_format($cotizacion->total, 2) . " MXN. "
             . "Puedes descargar el PDF aquí: " . route('cotizaciones.pdf.ver', $cotizacion);
 
@@ -379,7 +385,7 @@ class CotizacionController extends Controller
 
     public function exportarExcel(Request $request)
     {
-        $filtros = $request->only(['busqueda', 'estado']);
+        $filtros = $request->only(['busqueda', 'estado', 'origen']);
 
         return Excel::download(new CotizacionesExport($filtros), 'cotizaciones.xlsx');
     }
@@ -391,7 +397,7 @@ class CotizacionController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($this->vistaPdf($cotizacion), compact('cotizacion', 'usuario'));
 
-        return $pdf->download($cotizacion->folio . '.pdf');
+        return $pdf->download($cotizacion->folio_principal . '.pdf');
     }
 
     public function verPdf(Cotizacion $cotizacion)
@@ -401,7 +407,7 @@ class CotizacionController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($this->vistaPdf($cotizacion), compact('cotizacion', 'usuario'));
 
-        return $pdf->stream($cotizacion->folio . '.pdf');
+        return $pdf->stream($cotizacion->folio_principal . '.pdf');
     }
 
     /**

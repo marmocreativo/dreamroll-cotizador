@@ -1,4 +1,4 @@
-<x-layouts::app :title="__('Cotización') . ' ' . $cotizacion->folio">
+<x-layouts::app :title="__('Cotización') . ' ' . $cotizacion->folio_principal">
 
     <div x-data="cotizacionShow()">
 
@@ -15,7 +15,10 @@
                      class="h-9 w-auto object-contain" />
                 <div>
                     <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-semibold text-secondary">{{ $cotizacion->folio }}</h1>
+                        <h1 class="text-2xl font-semibold text-secondary">{{ $cotizacion->folio_principal }}</h1>
+                        @if($cotizacion->folio_empresa)
+                            <span class="text-xs text-gray-400">Folio Global: {{ $cotizacion->folio }}</span>
+                        @endif
                         <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
                             {{ $cotizacion->moneda ?? 'MXN' }}
                         </span>

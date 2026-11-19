@@ -15,7 +15,7 @@
 <body>
     <img src="{{ 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logo_principal.png'))) }}"
         style="height: 45px; width: auto; margin-bottom: 16px;" /><br>
-    <h1>Cotización {{ $cotizacion->folio }}</h1>
+    <h1>Cotización {{ $cotizacion->folio_principal }}</h1>
 
     <p>Estimado(a) {{ $cotizacion->cliente_nombre_completo }},</p>
     <p>Adjunto encontrará la cotización con los productos solicitados.</p>

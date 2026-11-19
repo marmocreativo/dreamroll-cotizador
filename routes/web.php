@@ -25,8 +25,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::redirect('/home', '/dashboard')->name('home');
 
+    // Utilidad temporal: asigna folio_empresa a cotizaciones existentes (simulación por defecto; ?ejecutar=1 aplica).
+    // Eliminar esta ruta y el controlador una vez ejecutada en producción.
+    Route::get('utilidades/asignar-folios-empresa', \App\Http\Controllers\FolioEmpresaBackfillController::class)
+        ->name('utilidades.folios-empresa');
+
     // Cotizaciones
-    Route::get('cotizaciones/{cotizacion}/pdf', [CotizacionController::class, 'descargarPdf'])
+    Route::get('cotizaciones/{cotizacion}/pdf',[CotizacionController::class, 'descargarPdf'])
         ->name('cotizaciones.pdf');
 
     Route::resource('cotizaciones', CotizacionController::class)
