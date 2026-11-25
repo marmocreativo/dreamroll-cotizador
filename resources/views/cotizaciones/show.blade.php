@@ -186,43 +186,14 @@
                         </div>
                     @endif
 
-                    @php
-                        $totalProductos = $cotizacion->productos->sum('subtotal');
-                        $totalHospedajes = $cotizacion->hospedajes->sum('total');
-                        $esBasico = $cotizacion->tipo === 'basico';
-
-                        $descuentoMontoShow = $esBasico
-                            ? ($totalProductos + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100)
-                            : ($totalProductos + $cotizacion->iva + $totalHospedajes + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100);
-                    @endphp
                     <div class="mt-4 flex justify-end">
-                        <div class="w-full max-w-xs space-y-2 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Fee de agencia ({{ number_format($cotizacion->fee_porcentaje, 2) }}%)</span>
-                                <span class="text-gray-900">${{ number_format($cotizacion->fee_agencia, 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">Subtotal</span>
-                                <span class="text-gray-900">${{ number_format($totalProductos, 2) }}</span>
-                            </div>
-                            @if(!$esBasico && $cotizacion->hospedajes->isNotEmpty())
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray-500">Subtotal hospedajes</span>
-                                    <span class="text-gray-900">${{ number_format($totalHospedajes, 2) }}</span>
+                        <div class="w-full max-w-sm space-y-2 text-sm">
+                            @foreach($cotizacion->desgloseTotales() as $renglon)
+                                <div class="flex items-center justify-between gap-4 {{ !empty($renglon['destacado']) ? 'border-t border-gray-200 pt-2 font-medium' : '' }}">
+                                    <span class="{{ !empty($renglon['destacado']) ? 'text-gray-900' : 'text-gray-500' }}">{{ $renglon['etiqueta'] }}</span>
+                                    <span class="text-gray-900 whitespace-nowrap">{{ !empty($renglon['negativo']) ? '-' : '' }}${{ number_format($renglon['monto'], 2) }}</span>
                                 </div>
-                            @endif
-                            @if($cotizacion->descuento > 0)
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray-500">Descuento ({{ $cotizacion->descuento }}%)</span>
-                                    <span class="text-gray-900">
-                                        -${{ number_format($descuentoMontoShow, 2) }}
-                                    </span>
-                                </div>
-                            @endif
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-500">IVA (16%)</span>
-                                <span class="text-gray-900">${{ number_format($cotizacion->iva, 2) }}</span>
-                            </div>
+                            @endforeach
                             <div class="flex items-center justify-between border-t border-gray-200 pt-2 text-base">
                                 <span class="font-semibold text-gray-900">Total</span>
                                 <span class="font-semibold text-secondary">${{ number_format($cotizacion->total, 2) }}</span>

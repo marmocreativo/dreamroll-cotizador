@@ -167,46 +167,7 @@
         </table>
     @endif
 
-    @php
-        $totalProductosPdf = $cotizacion->productos->sum('subtotal');
-        $totalHospedajesPdf = $cotizacion->hospedajes->sum('total');
-        $baseFeePdf = $totalProductosPdf + $cotizacion->iva + $totalHospedajesPdf;
-        $descuentoMontoPdf = $baseFeePdf > 0
-            ? ($baseFeePdf + $cotizacion->fee_agencia) * ($cotizacion->descuento / 100)
-            : 0;
-    @endphp
-    <table class="totales">
-        <tr>
-            <td>SUBTOTAL PRODUCTOS</td>
-            <td class="text-right">${{ number_format($totalProductosPdf, 2) }}</td>
-        </tr>
-        <tr>
-            <td>IVA PRODUCTOS (16%)</td>
-            <td class="text-right">${{ number_format($cotizacion->iva, 2) }}</td>
-        </tr>
-        @if ($cotizacion->tipo === 'avanzado' && $cotizacion->hospedajes->isNotEmpty())
-        <tr>
-            <td>SUBTOTAL HOSPEDAJES</td>
-            <td class="text-right">${{ number_format($totalHospedajesPdf, 2) }}</td>
-        </tr>
-        @endif
-        @if ($cotizacion->fee_porcentaje > 0)
-        <tr>
-            <td>FEE DE AGENCIA ({{ number_format($cotizacion->fee_porcentaje, 2) }}%)</td>
-            <td class="text-right">${{ number_format($cotizacion->fee_agencia, 2) }}</td>
-        </tr>
-        @endif
-        @if ($cotizacion->descuento > 0)
-        <tr>
-            <td>DESCUENTO ({{ $cotizacion->descuento }}%)</td>
-            <td class="text-right">-${{ number_format($descuentoMontoPdf, 2) }}</td>
-        </tr>
-        @endif
-        <tr class="total-row">
-            <td>TOTAL ({{ $cotizacion->moneda ?? 'MXN' }})</td>
-            <td class="text-right">${{ number_format($cotizacion->total, 2) }}</td>
-        </tr>
-    </table>
+    @include('pdf._totales')
 
     <table class="pie-tabla">
         <tr>

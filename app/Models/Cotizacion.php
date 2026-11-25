@@ -114,6 +114,54 @@ class Cotizacion extends Model
         return "COT-{$año}-{$consecutivo}";
     }
 
+    /**
+     * Renglones del desglose de totales, en el orden en que se suman.
+     * Lo usan los PDFs y la vista de detalle para que siempre coincidan
+     * con lo que calcula recalcular(). No incluye el renglón de TOTAL.
+     *
+     * @return array<int, array{etiqueta: string, monto: float, negativo?: bool, destacado?: bool}>
+     */
+    public function desgloseTotales(): array
+    {
+        $productos  = (float) $this->productos->sum('subtotal');
+        $hospedajes = (float) $this->hospedajes->sum('total');
+        $fee        = (float) $this->fee_agencia;
+        $iva        = (float) $this->iva;
+        $descPct    = (float) ($this->descuento ?? 0);
+        $feePct     = (float) ($this->fee_porcentaje ?? 0);
+
+        $renglones = [['etiqueta' => 'Subtotal de productos', 'monto' => $productos]];
+
+        if ($this->tipo === 'basico') {
+            if ($feePct > 0) {
+                $renglones[] = ['etiqueta' => 'Fee de agencia (' . number_format($feePct, 2) . '%)', 'monto' => $fee];
+            }
+            $descuento = ($productos + $fee) * ($descPct / 100);
+            if ($descPct > 0) {
+                $renglones[] = ['etiqueta' => 'Descuento (' . number_format($descPct, 2) . '%)', 'monto' => $descuento, 'negativo' => true];
+            }
+            $renglones[] = ['etiqueta' => 'Subtotal antes de IVA', 'monto' => $productos + $fee - $descuento, 'destacado' => true];
+            $renglones[] = ['etiqueta' => 'IVA (16%)', 'monto' => $iva];
+
+            return $renglones;
+        }
+
+        // Avanzado: el IVA se calcula solo sobre productos, antes del fee.
+        $renglones[] = ['etiqueta' => 'IVA de productos (16%)', 'monto' => $iva];
+        if ($this->hospedajes->isNotEmpty()) {
+            $renglones[] = ['etiqueta' => 'Subtotal de hospedajes (impuestos incluidos)', 'monto' => $hospedajes];
+        }
+        if ($feePct > 0) {
+            $renglones[] = ['etiqueta' => 'Fee de agencia (' . number_format($feePct, 2) . '%)', 'monto' => $fee];
+        }
+        if ($descPct > 0) {
+            $descuento = ($productos + $iva + $hospedajes + $fee) * ($descPct / 100);
+            $renglones[] = ['etiqueta' => 'Descuento (' . number_format($descPct, 2) . '%)', 'monto' => $descuento, 'negativo' => true];
+        }
+
+        return $renglones;
+    }
+
     public function productos(): HasMany
     {
         return $this->hasMany(CotizacionProducto::class);
@@ -164,14 +212,16 @@ class Cotizacion extends Model
      */
     private function recalcularBasico(): void
     {
-        $subtotal   = $this->productos->sum('subtotal');
-        $feeAgencia = $subtotal * (($this->fee_porcentaje ?? 0) / 100);
+        // Se redondea cada paso a centavos para que los renglones del desglose
+        // (PDF / detalle) sumen exactamente el total.
+        $subtotal   = round($this->productos->sum('subtotal'), 2);
+        $feeAgencia = round($subtotal * (($this->fee_porcentaje ?? 0) / 100), 2);
 
         $base      = $subtotal + $feeAgencia;
-        $descuento = $base * (($this->descuento ?? 0) / 100);
+        $descuento = round($base * (($this->descuento ?? 0) / 100), 2);
         $baseConDescuento = $base - $descuento;
 
-        $iva   = $baseConDescuento * (self::IVA_PORCENTAJE / 100);
+        $iva   = round($baseConDescuento * (self::IVA_PORCENTAJE / 100), 2);
         $total = $baseConDescuento + $iva;
 
         $this->update([
